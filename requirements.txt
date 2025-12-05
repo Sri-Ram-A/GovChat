@@ -1,0 +1,4 @@
+Django
+pyaudio
+vosk
+channels[daphne]
