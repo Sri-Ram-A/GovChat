@@ -52,7 +52,11 @@ npm install -g pnpm
 - https://ui.shadcn.com/docs/dark-mode/next
 - https://ui.shadcn.com/themes#themes
 - https://nextjs.org/docs/messages/next-image-unconfigured-host
+## Websocket in NExtJS (React) (Go to Step 2 )
 - https://medium.com/@chaman388/websockets-in-reactjs-a-practical-guide-with-real-world-examples-2efe483ee150
 
 # Configuring VOSK STT
 - https://dev.to/mattsu014/vosk-offline-speech-recognition-3kbb
+
+# Understanding Django Websockets Connection
+- https://testdriven.io/blog/django-channels/
