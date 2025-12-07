@@ -1,7 +1,7 @@
 # chat/consumers.py
 
 import json
-import os
+from loguru import logger
 from datetime import datetime
 from pathlib import Path
 from channels.generic.websocket import WebsocketConsumer
@@ -16,50 +16,35 @@ class ChatConsumer(WebsocketConsumer):
         self.recording_id = None
         
         # Create audio storage directory
-        self.audio_dir = Path('media/audio_recordings')
+        self.audio_dir = Path('media/audio')
         self.audio_dir.mkdir(parents=True, exist_ok=True)
 
     def connect(self):
         self.room_name = "ConversationalAI"
         self.accept()
-        print(f"[WebSocket] Client connected to room: {self.room_name}")
+        logger.info(f"[WebSocket] Client connected to room: {self.room_name}")
 
     def disconnect(self, close_code):
-        print(f"[WebSocket] Client disconnected. Code: {close_code}")
-        
+        logger.info(f"[WebSocket] Client disconnected. Code: {close_code}")
         # Clean up any unsaved audio chunks
         if self.audio_chunks:
-            print(f"[WebSocket] Cleaning up {len(self.audio_chunks)} unsaved chunks")
+            logger.warning(f"[WebSocket] Cleaning up {len(self.audio_chunks)} unsaved chunks")
             self.audio_chunks.clear()
 
     def receive(self, text_data=None, bytes_data=None):
-        """
-        Handle incoming messages - both text (JSON) and binary (audio) data
-        """
-        
         # Handle binary audio data
         if bytes_data:
             self.audio_chunk_count += 1
             audio_size = len(bytes_data)
-            
             # Store chunk in memory
             self.audio_chunks.append(bytes_data)
-            
-            print(f"[Audio] Chunk #{self.audio_chunk_count} | Size: {audio_size} bytes | Total: {len(self.audio_chunks)} chunks")
-            
-            # Optional: Send periodic updates
-            if self.audio_chunk_count % 5 == 0:
-                self.send(text_data=json.dumps({
-                    'type': 'partial',
-                    'text': f'Processing... ({self.audio_chunk_count} chunks received)'
-                }))
-            
+            logger.debug(f"[Audio] Chunk {self.audio_chunk_count:<5} | Size: {audio_size:<10} bytes | Total: {len(self.audio_chunks):<5} chunks")
+
         # Handle text/JSON data
         elif text_data:
             try:
                 data = json.loads(text_data)
                 action = data.get('action')
-                
                 if action == 'finalize':
                     self._finalize_recording()
                     
@@ -68,14 +53,13 @@ class ChatConsumer(WebsocketConsumer):
                     self._handle_message(message)
                     
             except json.JSONDecodeError as e:
-                print(f"[Error] Invalid JSON: {e}")
+                logger.error(f"[Error] Invalid JSON: {e}")
                 self._send_error('Invalid JSON format')
 
     def _finalize_recording(self):
         """Save all audio chunks to a file and reset state"""
-        
         if not self.audio_chunks:
-            print("[Audio] No audio chunks to finalize")
+            logger.warning("[Audio] No audio chunks to finalize")
             self.send(text_data=json.dumps({
                 'type': 'finalized',
                 'text': 'No audio data received'
@@ -83,7 +67,7 @@ class ChatConsumer(WebsocketConsumer):
             return
         
         # Generate unique filename
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        timestamp = datetime.now().strftime('%d%m%Y_%H%M%S')
         self.recording_id = f'recording_{timestamp}'
         filename = f'{self.recording_id}.webm'
         filepath = self.audio_dir / filename
@@ -99,13 +83,15 @@ class ChatConsumer(WebsocketConsumer):
             file_size = filepath.stat().st_size
             duration_estimate = self.audio_chunk_count * 1  # Rough estimate: 1 chunk per second
             
-            print(f"[Audio] ===== Recording Saved =====")
-            print(f"[Audio] Filename: {filename}")
-            print(f"[Audio] File size: {file_size} bytes ({file_size / 1024:.2f} KB)")
-            print(f"[Audio] Total chunks: {self.audio_chunk_count}")
-            print(f"[Audio] Estimated duration: ~{duration_estimate} seconds")
-            print(f"[Audio] Full path: {filepath.absolute()}")
-            print(f"[Audio] ==============================")
+            logger.info(
+                "\n[Audio] ===== Recording Saved =====\n"
+                f"    Filename: {filename}\n"
+                f"    File size: {file_size} bytes ({file_size / 1024:.2f} KB)\n"
+                f"    Total chunks: {self.audio_chunk_count}\n"
+                f"    Estimated duration: ~{duration_estimate} seconds\n"
+                f"    Full path: {filepath.absolute()}\n"
+                "[Audio] =============================="
+            )
             
             # Verify file was created and has content
             if file_size > 0:
