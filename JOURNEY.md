@@ -60,3 +60,6 @@ npm install -g pnpm
 
 # Understanding Django Websockets Connection
 - https://testdriven.io/blog/django-channels/
+
+# Recording Audio in Frontend
+- https://medium.com/@chaman388/websockets-in-reactjs-a-practical-guide-with-real-world-examples-2efe483ee150
