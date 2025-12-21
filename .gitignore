@@ -4,6 +4,7 @@ __pycache__/
 .DS_Store
 .env
 venv/
-backend/models/stt/vosk-model-small-en-in-0.4
+# backend/models/stt/vosk-model-small-en-in-0.4
 media/
 migrations/
+test/
