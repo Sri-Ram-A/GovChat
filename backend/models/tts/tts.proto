@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package tts;
+
+service TextToSpeech {
+  // Bidirectional streaming
+  rpc StreamTTS (stream TTSRequest) returns (stream TTSResponse);
+}
+
+message TTSRequest {
+  string text = 1;
+  bool end_of_stream = 2;
+}
+
+message TTSResponse {
+  bytes audio = 1;        // PCM16 or float32 bytes
+  int32 sample_rate = 2;  // e.g. 24000
+  bool is_final = 3;
+}
+
+
