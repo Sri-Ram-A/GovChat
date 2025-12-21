@@ -1,29 +1,41 @@
-# models/stt/vosk_stt.py
 import json
 from vosk import Model, KaldiRecognizer
-
+import numpy as np
+from loguru import logger
 
 class AudioTranscriber:
-    def __init__(self, model_path):
-        self.model = Model(model_path)
-        self.recognizer = KaldiRecognizer(self.model, 16000)
-        
-    def accept_audio_chunk(self, pcm_chunk):
-        """Process PCM16 audio chunk directly"""
-        try:
-            # bytes_data is already PCM16 16kHz mono
-            if self.recognizer.AcceptWaveform(pcm_chunk):
-                result = json.loads(self.recognizer.Result())
-                return {"type": "final", "text": result.get("text", "")}
-            
-            partial_result = json.loads(self.recognizer.PartialResult())
-            return {"type": "partial", "text": partial_result.get("partial", "")}
-            
-        except Exception as e:
-            print(f"Error processing audio: {e}")
-            return {"type": "none", "text": ""}
+    # Class variable to share model across instances
+    _shared_model = None
+    _model_path = None
     
+    def __init__(self, model_path):
+        self.model_path = model_path
+        self.sample_rate = 16000
+        self.recognizer = None
+        
+        # Load model only once
+        if AudioTranscriber._shared_model is None or AudioTranscriber._model_path != model_path:
+            logger.info(f"[VOSK] Loading model from {model_path}")
+            AudioTranscriber._shared_model = Model(model_path)
+            AudioTranscriber._model_path = model_path
+        else:
+            logger.debug("[VOSK] Using shared model instance")
+        
+        self.recognizer = KaldiRecognizer(AudioTranscriber._shared_model, self.sample_rate)
+        self.recognizer.SetWords(True)
+    
+    def accept_audio_chunk(self, pcm_data):
+        # Your existing code...
+        if self.recognizer :
+            if self.recognizer.AcceptWaveform(pcm_data):
+                result = json.loads(self.recognizer.Result())
+                return {"text": result.get("text", ""), "type": "final"}
+            else:
+                partial = json.loads(self.recognizer.PartialResult())
+                return {"text": partial.get("partial", ""), "type": "partial"}
+        
     def flush(self):
-        """Get final result after all audio has been processed"""
-        final = json.loads(self.recognizer.FinalResult())
-        return {"type": "final", "text": final.get("text", "")}
+        # Your existing code...
+        if self.recognizer:
+            result = json.loads(self.recognizer.FinalResult())
+            return {"text": result.get("text", ""), "type": "final"}

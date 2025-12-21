@@ -8,3 +8,4 @@ venv/
 media/
 migrations/
 test/
+backend/db.sqlite3

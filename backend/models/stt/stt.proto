@@ -13,17 +13,16 @@ message AudioChunk {
   bool end_of_stream = 2; // True when client is done sending audio
 }
 
-// Partial or final?
-enum ResultType {
-  PARTIAL = 0;
-  FINAL = 1;
-}
-
 // A transcription result
 message Transcript {
   string text = 1;
   ResultType type = 2;
 }
 
+// Partial or final?
+enum ResultType {
+  PARTIAL = 0;
+  FINAL = 1;
+}
 
 

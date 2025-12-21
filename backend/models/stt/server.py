@@ -27,7 +27,7 @@ class SpeechToTextService(stt_pb2_grpc.SpeechToTextServicer):
                 # Process with Vosk
                 result = transcriber.accept_audio_chunk(audio_chunk.pcm)
                 
-                if result["text"]:  # Only send if there's actual text
+                if result and result["text"]:  # Only send if there's actual text
                     logger.debug(f"[STT] Transcription ({result['type']}): '{result['text']}'")
                     if result["type"] == "partial":
                         yield stt_pb2.Transcript(text=result["text"],type=stt_pb2.PARTIAL)
@@ -37,8 +37,8 @@ class SpeechToTextService(stt_pb2_grpc.SpeechToTextServicer):
             
             # Flush remaining audio
             final = transcriber.flush()
-            logger.info(f"[STT] Final FLUSH result: '{final['text']}'")
-            if final["text"]:
+            if final and final["text"]:
+                logger.info(f"[STT] Final FLUSH result: '{final['text']}'")
                 yield stt_pb2.Transcript(text=final["text"],type=stt_pb2.FINAL)
             else:
                 logger.warning("[STT] No text in final FLUSH")
@@ -51,7 +51,7 @@ def serve():
     stt_pb2_grpc.add_SpeechToTextServicer_to_server(SpeechToTextService(),server)
     server.add_insecure_port("[::]:50051")
     server.start()
-    print("🎙️ STT gRPC server running on port 50051")
+    logger.success("STT gRPC server running on port 50051")
     server.wait_for_termination()
 
 if __name__ == "__main__":

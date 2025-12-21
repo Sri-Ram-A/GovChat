@@ -65,6 +65,7 @@ def add_SpeechToTextServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
+
 class SpeechToText(object):
     """The Speech-to-Text service"""
     @staticmethod

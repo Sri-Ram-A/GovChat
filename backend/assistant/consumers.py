@@ -17,12 +17,12 @@ class ChatConsumer(WebsocketConsumer):
         # gRPC channel (reusable)
         self.channel = grpc.insecure_channel("localhost:50051")
         self.stub = stt_pb2_grpc.SpeechToTextStub(self.channel)
+        self.stream_active = False
         
         # Stream management
         self.audio_queue = None
         self.grpc_responses = None
         self.response_thread = None
-        self.stream_active = False
         
     def receive(self, text_data=None, bytes_data=None):
         if bytes_data:
@@ -85,13 +85,13 @@ class ChatConsumer(WebsocketConsumer):
         if self.grpc_responses:
             try:
                 for response in self.grpc_responses:
-                    logger.info(f"[gRPC] Received transcript: '{response.text}' (final={response.type == FINAL})")
+                    # logger.debug(f"[gRPC] Received transcript: '{response.text}' (final={response.type == FINAL})")
                     self.send(text_data=json.dumps({
                         "type": "transcript",
                         "text": response.text,
                         "final": response.type == FINAL
                     }))
-                logger.info("[gRPC] Response stream ended")
+                logger.success("[gRPC] Response stream ended")
             except Exception as e:
                 logger.error(f"[gRPC] Error reading responses: {e}")
 
