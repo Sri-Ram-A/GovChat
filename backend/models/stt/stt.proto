@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package stt;
+
+// The Speech-to-Text service
+service SpeechToText {
+  rpc StreamAudio (stream AudioChunk) returns (stream Transcript);
+}
+
+// One chunk of raw audio
+message AudioChunk {
+  bytes pcm = 1;          // Raw PCM16 audio data
+  bool end_of_stream = 2; // True when client is done sending audio
+}
+
+// Partial or final?
+enum ResultType {
+  PARTIAL = 0;
+  FINAL = 1;
+}
+
+// A transcription result
+message Transcript {
+  string text = 1;
+  ResultType type = 2;
+}
+
+
+

@@ -1,4 +1,9 @@
 # Start Backend 
+- use python3.10 backend
+```python
+conda create -n govchat python=3.10 -y
+conda activate govchat
+```
 - https://docs.djangoproject.com/en/6.0/intro/tutorial01/
 - https://channels.readthedocs.io/en/latest/installation.html
 <!-- https://www.django-rest-framework.org/tutorial/quickstart/ -->
@@ -63,3 +68,21 @@ npm install -g pnpm
 
 # Recording Audio in Frontend
 - https://medium.com/@chaman388/websockets-in-reactjs-a-practical-guide-with-real-world-examples-2efe483ee150
+- Custom Hooks using GPT
+- Problem with opus, vosk needs PCM (Below Soln with Deepseek)
+https://medium.com/developer-rants/streaming-audio-with-16-bit-mono-pcm-encoding-from-the-browser-and-how-to-mix-audio-while-we-are-f6a160409135
+
+# Sending audio from Backend
+- Kokoro TTS (https://huggingface.co/hexgrad/Kokoro-82M/blob/main/README.md)
+
+# Moving STT and TTS to microservices
+- First I am changing the frontend to use BLobs (https://developer.mozilla.org/en-US/docs/Web/API/MediaRecorder)
+- Wasnot Successfull (Decoding error from audio/wav to pcm in frontend)
+- Learning grpc (Intro : https://medium.com/@coderviewer/simple-usage-of-grpc-with-python-f714d9f69daa)
+- Best for writing code from : (https://codelabs.developers.google.com/grpc/getting-started-grpc-python-streaming#2)
+- grpc in python (https://grpc.io/docs/languages/python/basics/)
+```zsh
+python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. stt.proto
+```
+Then i put this on top of grpc file : 
+# pyright: reportAttributeAccessIssue=false 
