@@ -24,15 +24,6 @@ class STTClient:
         self.thread.start()
         logger.info("[STT] Stream started")
 
-    def send_audio(self, pcm: bytes):
-        if self.active:
-            self.audio_queue.put(AudioChunk(pcm=pcm, end_of_stream=False))
-
-    def stop(self):
-        if self.active:
-            self.audio_queue.put(AudioChunk(pcm=b"", end_of_stream=True))
-            self.active = False
-
     def _audio_generator(self):
         while True:
             chunk = self.audio_queue.get()
@@ -47,6 +38,15 @@ class STTClient:
                 self.on_result(res.text, is_final)
         except Exception as e:
             logger.error(f"[STT] Error: {e}")
+
+    def send_audio(self, pcm: bytes):
+        if self.active:
+            self.audio_queue.put(AudioChunk(pcm=pcm, end_of_stream=False))
+
+    def stop(self):
+        if self.active:
+            self.audio_queue.put(AudioChunk(pcm=b"", end_of_stream=True))
+            self.active = False
 
     def close(self):
         self.channel.close()
