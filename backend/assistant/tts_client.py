@@ -6,8 +6,8 @@ from loguru import logger
 from models.tts.tts_pb2 import TTSRequest # type: ignore
 from models.tts import tts_pb2_grpc
 
-
 class TTSClient:
+    
     def __init__(self, url: str, on_audio):
         """on_audio(pcm: bytes, is_final: bool)"""
         self.channel = grpc.insecure_channel(url)

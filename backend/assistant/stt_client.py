@@ -5,8 +5,8 @@ from loguru import logger
 
 from models.stt import stt_pb2_grpc
 from models.stt.stt_pb2 import AudioChunk, FINAL # type: ignore
-
 class STTClient:
+
     def __init__(self, url: str, on_result):
         """on_result(text: str, is_final: bool)"""
         self.channel = grpc.insecure_channel(url)

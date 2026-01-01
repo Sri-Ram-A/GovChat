@@ -5,7 +5,6 @@ import stt_pb2
 import stt_pb2_grpc
 from vosk_stt import AudioTranscriber
 from loguru import logger
-import numpy as np
 
 MODEL_PATH = "vosk-model-small-en-in-0.4"
 class SpeechToTextService(stt_pb2_grpc.SpeechToTextServicer):
@@ -19,7 +18,6 @@ class SpeechToTextService(stt_pb2_grpc.SpeechToTextServicer):
                 if audio_chunk.end_of_stream:
                     logger.info(f"[STT] End of stream received")
                     break
-                    
                 if len(audio_chunk.pcm) == 0:
                     logger.warning("[STT] Received empty audio chunk")
                     continue
