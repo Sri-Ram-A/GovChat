@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'drf_redesign',###
     'rest_framework',###
     'rest_framework_simplejwt',###
+    'drf_yasg', ###
 ]
 ###
 REST_FRAMEWORK = {
@@ -137,9 +138,11 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 ### BELOW ADDED BY ME
+### CORS
 MODEL_PATH = "vosk-model-small-en-in-0.4"
 CORS_ALLOW_ALL_ORIGINS = True
 
+###  JWT
 from datetime import timedelta 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
@@ -147,4 +150,19 @@ SIMPLE_JWT = {
     'SLIDING_TOKEN_LIFETIME': timedelta(days=30),
     'SLIDING_TOKEN_REFRESH_LIFETIME_LATE_USER': timedelta(days=1),
     'SLIDING_TOKEN_LIFETIME_LATE_USER': timedelta(days=30),
+}
+### Files
+MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_URL = "/media/"
+
+### SWAGGER JWT
+SWAGGER_SETTINGS = {
+    "SECURITY_DEFINITIONS": {
+        "Bearer": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header",
+            "description": "JWT Authorization header. Example: Bearer <your_access_token>",
+        }
+    }
 }

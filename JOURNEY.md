@@ -153,3 +153,5 @@ User
        ├── designation
 ```
 - Login : https://appliku.com/post/how-use-jwt-authentication-django/
+# File upload in DRF : 
+- https://www.django-rest-framework.org/api-guide/parsers/#fileuploadparser

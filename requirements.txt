@@ -13,3 +13,4 @@ djangorestframework
 djangorestframework-simplejwt
 django-cors-headers
 drf-redesign
+drf-yasg

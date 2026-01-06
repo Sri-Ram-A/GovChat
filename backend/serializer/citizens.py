@@ -3,6 +3,7 @@ from entities.citizens import CitizenProfile
 from .base import UserAllSerializer , UserRegisterSerializer
 
 class CitizenProfileSerializer(serializers.ModelSerializer):
+    
     user = UserAllSerializer(read_only=True)
 
     class Meta:
@@ -25,6 +26,3 @@ class CitizenRegistrationSerializer(serializers.ModelSerializer):
         user = user_serializer.save()
         citizen_profile = CitizenProfile.objects.create(user=user,**validated_data)
         return citizen_profile
-
-
-
