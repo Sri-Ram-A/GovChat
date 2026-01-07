@@ -17,25 +17,57 @@ export interface RegisterForm {
 
 export type FormErrors = Partial<Record<keyof RegisterForm | "submit", string>>
 
-export interface Complaint {
-  id: number
-  title: string
-  description: string
-  status: "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED"
-  city: string
-  pincode: string
-  timestamp: string
-  likes_count: number
+export type MediaType = "image" | "video" | "document" | "audio";
 
-  // Optional extras (serializer dependent)
-  citizen_username?: string
-  evidences?: {
-    id: number
-    file: string
-    media_type: string
-  }[]
+export interface Evidence {
+  id: number;
+  complaint: number;
+  file: string; // URL or relative path
+  media_type: MediaType;
 }
 
+export type ComplaintStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
+
+export interface Complaint {
+  id: number;
+  title: string;
+  description: string;
+  status: ComplaintStatus;
+  city?: string;
+  pincode?: string;
+  timestamp: string; // ISO
+  likes_count: number;
+  evidences?: Evidence[];
+  // optional convenience fields (if serializer adds them)
+  citizen_username?: string;
+  address_line_1?: string;
+  address_line_2?: string;
+  landmark?: string;
+}
+export interface ComplaintCreatePayload {
+  title: string;
+  description: string;
+  department: number;
+  address_line_1?: string;
+  address_line_2?: string;
+  landmark?: string;
+  city?: string;
+  pincode?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+export interface EvidenceUploadPayload {
+  complaint: number;
+  file: File;
+  media_type: MediaType;
+}
+
+export interface Department {
+  id: number
+  name: string
+  description: string
+}
 
 export interface User {
   id: number
@@ -59,18 +91,6 @@ export interface CitizenProfile {
   is_verified: boolean
 }
 
-export interface Department {
-  id: number
-  name: string
-  description: string
-}
-
-export interface Evidence {
-  id: number
-  complaint: number
-  file: string
-  media_type: "image" | "video" | "document"
-}
 
 export interface AuthResponse {
   access: string

@@ -1,4 +1,4 @@
-export const API_URL = "http://localhost:8000/api/"
+export const API_URL = "http://localhost:8000/"
 
 type HttpMethod = "GET" | "POST" | "PUT" | "DELETE"
 
@@ -28,54 +28,35 @@ function extractAllErrors(error: any, messages: string[] = []): string {
 }
 
 export async function REQUEST(
-  method: HttpMethod,
-  route: string,
-  data?: any
+  method: string,
+  url: string,
+  body?: any,
+  options?: { isMultipart?: boolean }
 ) {
-  const token = typeof window !== "undefined" ? localStorage.getItem("access") : null
-  const url = `${API_URL}${route}`
+  const headers: Record<string, string> = {};
 
-  // Debug logging for request
-  try {
-    console.debug("REQUEST ->", { method, url, payload: data, tokenPresent: !!token })
-  } catch (e) {
-    // ignore logging failures
+  if (!options?.isMultipart) {
+    headers["Content-Type"] = "application/json";
   }
 
-  let resp: Response
-  try {
-    resp = await fetch(url, {
+  const token = localStorage.getItem("access");
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(
+    `${API_URL}api/${url}`,
+    {
       method,
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
-      body: data ? JSON.stringify(data) : undefined,
-    })
-  } catch (networkErr: any) {
-    console.error("Network error while calling API", networkErr)
-    throw new Error(networkErr?.message || "Network error")
+      headers,
+      body: options?.isMultipart ? body : body ? JSON.stringify(body) : null,
+    }
+  );
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw err;
   }
 
-  const text = await resp.text().catch(() => "")
-  let responseData: any = {}
-  try {
-    responseData = text ? JSON.parse(text) : {}
-  } catch (err) {
-    // Not a JSON response; keep raw text for debugging
-    responseData = text
-  }
-
-  console.debug("RESPONSE <-", { url, status: resp.status, ok: resp.ok, data: responseData })
-
-  if (!resp.ok) {
-    // Try extracting useful message
-    const message = extractAllErrors(responseData) || `HTTP ${resp.status}`
-    const err = new Error(message)
-    ;(err as any).status = resp.status
-    ;(err as any).raw = responseData
-    throw err
-  }
-
-  return responseData
+  return res.json();
 }
