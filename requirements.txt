@@ -12,5 +12,6 @@ grpcio-tools
 djangorestframework
 djangorestframework-simplejwt
 django-cors-headers
-drf-redesign
-drf-yasg
+drf-spectacular
+pillow
+huggingface_hub[hf_xet]

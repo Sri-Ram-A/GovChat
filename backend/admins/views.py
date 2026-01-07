@@ -13,16 +13,18 @@ from loguru import logger
 
 class AdminListAPIView(APIView):
     # permission_classes = [IsAuthenticated]
+    serializer_class = admin_serializer.AdminProfileSerializer
     def get(self, request):
         admins = (AdminProfile.objects.select_related('user', 'department').all())
-        serializer = admin_serializer.AdminProfileSerializer(admins, many=True)
+        serializer = self.serializer_class(admins, many=True)
         return Response(serializer.data)
 
 class DepartmentsListAPIView(APIView):
     # permission_classes = [IsAuthenticated]
+    serializer_class = governance_serializer.DepartmentSerializer
     def get(self, request):
         departments = Department.objects.all()
         logger.debug(departments)
-        serializer = governance_serializer.DepartmentSerializer(departments, many=True)
+        serializer = self.serializer_class(departments, many=True)
         return Response(serializer.data)
 
