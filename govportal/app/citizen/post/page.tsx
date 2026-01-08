@@ -4,28 +4,19 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Upload, FileText, MapPin, Building2 } from "lucide-react";
 
 import FormField from "@/components/reusables/FormField";
 import FormSection from "@/components/reusables/FormSection";
 import { REQUEST } from "@/services/api";
-import type {
-  MediaType,
-  ComplaintCreatePayload,
-  Department,
-} from "@/types";
+import type { MediaType, ComplaintCreatePayload, Department, } from "@/types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 export default function PostComplaintPage() {
   const router = useRouter();
-
   const [loading, setLoading] = useState(false);
   const [complaintId, setComplaintId] = useState<number | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -79,7 +70,7 @@ export default function PostComplaintPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10">
+    <div className="max-w-3xl mx-auto px-4 py-10 ">
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="text-3xl">
@@ -92,6 +83,7 @@ export default function PostComplaintPage() {
         </CardHeader>
 
         <CardContent className="space-y-10">
+
           {/* Complaint */}
           <FormSection title="Complaint Information" icon={<FileText />}>
             <FormField
@@ -99,51 +91,60 @@ export default function PostComplaintPage() {
               value={form.title}
               onChange={(v) => setForm({ ...form, title: v })}
               required
+              className="mb-4"
             />
-
             <Textarea
               placeholder="Explain the issue in detail..."
-              className="min-h-[140px]"
+              className="min-h-35"
               value={form.description}
               onChange={(e) =>
                 setForm({ ...form, description: e.target.value })
-              }
-            />
+              }/>
           </FormSection>
 
-          {/* Department */}
-          <FormSection title="Concerned Department" icon={<Building2 />}>
-            <select
-              className="w-full h-11 rounded-md border bg-background px-3 text-sm"
-              value={form.department}
-              onChange={(e) =>
-                setForm({ ...form, department: Number(e.target.value) })
-              }
-            >
-              <option value={0}>Select department</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-          </FormSection>
 
           {/* Location */}
           <FormSection title="Location Details" icon={<MapPin />}>
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+              {/* City */}
               <FormField
                 label="City"
                 value={form.city}
-                onChange={(v) => setForm({ ...form, city: v })}
-              />
+                onChange={(v) => setForm({ ...form, city: v })}/>
+
+              {/* Pincode */}
               <FormField
                 label="Pincode"
                 value={form.pincode}
-                onChange={(v) => setForm({ ...form, pincode: v })}
-              />
+                onChange={(v) => setForm({ ...form, pincode: v })}/>
+
+              {/* Department */}
+              <div className="space-y-2">
+                <Label className="mb-4">Department</Label>
+                <Select
+                  value={form.department ? String(form.department) : ""}
+                  onValueChange={(value) =>
+                    setForm({ ...form, department: Number(value) })
+                  }
+                >
+                  <SelectTrigger className="w-full h-11">
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+
+                  <SelectContent>
+                    {departments.map((d) => (
+                      <SelectItem key={d.id} value={String(d.id)}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
             </div>
           </FormSection>
+
 
           {/* Evidence */}
           <FormSection title="Upload Evidence" icon={<Upload />}>
@@ -158,16 +159,16 @@ export default function PostComplaintPage() {
                   media_type: f.type.startsWith("image")
                     ? "image"
                     : f.type.startsWith("video")
-                    ? "video"
-                    : f.type.startsWith("audio")
-                    ? "audio"
-                    : "document",
+                      ? "video"
+                      : f.type.startsWith("audio")
+                        ? "audio"
+                        : "document",
                 }));
                 setFiles(uploaded);
               }}
             />
 
-            <div className="flex flex-wrap gap-2 mt-4">
+            <div className="flex flex-wrap gap-2 ">
               {files.map((f, i) => (
                 <Badge key={i} variant="secondary">
                   {f.media_type} • {f.file.name}
@@ -196,5 +197,6 @@ export default function PostComplaintPage() {
         </CardContent>
       </Card>
     </div>
+
   );
 }

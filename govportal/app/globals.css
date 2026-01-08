@@ -123,3 +123,30 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom UX polish: animated blob, subtle message enter, and glow */
+@keyframes blob {
+  0% { transform: translateY(0px) scale(1); }
+  33% { transform: translateY(-6px) scale(1.03); }
+  66% { transform: translateY(4px) scale(0.98); }
+  100% { transform: translateY(0px) scale(1); }
+}
+
+.animate-blob {
+  animation: blob 6s ease-in-out infinite;
+}
+
+@keyframes msgFade {
+  from { opacity: 0; transform: translateY(6px) scale(0.995); }
+  to { opacity: 1; transform: translateY(0px) scale(1); }
+}
+
+.msg-enter {
+  animation: msgFade 220ms ease-out both;
+}
+
+/* small glowing background gradient used in EmptyState */
+.bg-glow {
+  background: radial-gradient(circle at 20% 20%, rgba(99,102,241,0.12), transparent 20%), radial-gradient(circle at 80% 80%, rgba(236,72,153,0.08), transparent 25%);
+}
+

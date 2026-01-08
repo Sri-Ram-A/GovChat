@@ -93,5 +93,4 @@ class AllComplaintsView(APIView):
     def get(self, request):
         complaints = Complaint.objects.all()
         serializer = self.serializer_class(complaints, many=True)
-        if serializer.data[0] : logger.debug(serializer.data[0])
         return Response(serializer.data, status=status.HTTP_200_OK)
