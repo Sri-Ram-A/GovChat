@@ -62,9 +62,11 @@ export default function CitizenHome() {
 
   return (
     <div className="min-h-screen bg-linear-to-b from-background to-muted/30">
+
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
               <Shield className="h-6 w-6 text-primary" />
@@ -76,6 +78,18 @@ export default function CitizenHome() {
           </div>
 
           <div className="flex items-center gap-4">
+            <Button asChild size="sm" className="gap-2">
+              <Link href="/citizen/complaints">
+                <FileText className="h-4 w-4" />
+                Complaints
+              </Link>
+            </Button>
+            <Button asChild size="sm" className="gap-2">
+              <Link href="/citizen/profile">
+                <FileText className="h-4 w-4" />
+                Profile
+              </Link>
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -86,10 +100,12 @@ export default function CitizenHome() {
               Logout
             </Button>
           </div>
+
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+
         {/* Hero Section */}
         <section className="mb-16">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -112,6 +128,7 @@ export default function CitizenHome() {
                     File a Complaint
                   </Link>
                 </Button>
+
                 <Button asChild variant="outline" size="lg" className="gap-2">
                   <Link href="/citizen/complaints">
                     <CheckCircle className="h-5 w-5" />
@@ -166,12 +183,11 @@ export default function CitizenHome() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              "/home/1.png",
-              "/home/2.png",
-              "/home/3.png",
-              "/home/4.png",
-              "/home/5.png",
               "/home/6.png",
+              "/home/2.png",
+              "/home/5.png",
+              "/home/4.png",
+              "/home/3.png",
             ].map((src, index) => (
               <div>
                 <Image

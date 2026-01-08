@@ -5,7 +5,6 @@ from .base import UserAllSerializer , UserRegisterSerializer
 class CitizenProfileSerializer(serializers.ModelSerializer):
     
     user = UserAllSerializer(read_only=True)
-
     class Meta:
         model = CitizenProfile
         fields = "__all__"
@@ -14,7 +13,6 @@ class CitizenRegistrationSerializer(serializers.ModelSerializer):
     '''This serializer expects a field called user, and that field is a nested object that must follow UserRegisterSerializer.'''
     
     user = UserRegisterSerializer()
-
     class Meta:
         model = CitizenProfile
         fields = '__all__'

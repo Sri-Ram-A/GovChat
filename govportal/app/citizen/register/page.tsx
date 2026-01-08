@@ -4,23 +4,23 @@ import { useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
-import { CalendarIcon, Loader2, UserPlus, Lock, Phone, MapPin, User, Mail, Shield, ArrowRight, } from "lucide-react";
+import { CalendarIcon, Loader2, UserPlus, Lock, Phone, MapPin, User, Shield, ArrowRight, } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import FormField from "@/components/reusables/FormField";
+import FormSection from "@/components/reusables/FormSection";
+
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { RegisterForm } from "@/types/index";
-import { REQUEST } from "@/services/api"; // make sure path correct
+import { REQUEST } from "@/services/api"; 
 import { setStoredToken } from "@/services/helpers";
-type Errors = Record<string, string>;
 
-import FormSection from "@/components/reusables/FormSection";
+type Errors = Record<string, string>;
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -99,7 +99,6 @@ export default function RegisterPage() {
         router.push("/");
       }
     } catch (err: any) {
-      // REQUEST throws Error with extracted text — show it nicely
       toast.error(err?.message || "Registration failed. Please try again.");
       setErrors({ submit: err?.message || "Registration failed" });
     } finally {

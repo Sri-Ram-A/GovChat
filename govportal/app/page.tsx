@@ -36,7 +36,7 @@ export default function HomePage() {
       {/* NAVBAR */}
       <nav className="relative z-20 px-8 py-6">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
-          <div className="text-2xl font-bold">N</div>
+          <div className="text-2xl font-bold">GOVCHAT</div>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

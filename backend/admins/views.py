@@ -8,8 +8,6 @@ from entities.admins import AdminProfile
 from entities.governance import Department
 import  serializer.admins as admin_serializer
 import serializer.governance as governance_serializer
-import serializer.base as base_serializer
-from loguru import logger
 
 class AdminListAPIView(APIView):
     # permission_classes = [IsAuthenticated]
@@ -24,7 +22,6 @@ class DepartmentsListAPIView(APIView):
     serializer_class = governance_serializer.DepartmentSerializer
     def get(self, request):
         departments = Department.objects.all()
-        logger.debug(departments)
         serializer = self.serializer_class(departments, many=True)
         return Response(serializer.data)
 

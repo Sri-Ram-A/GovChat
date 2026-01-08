@@ -13,9 +13,9 @@ class UserAllSerializer(serializers.ModelSerializer):
 
 class UserRegisterSerializer(serializers.ModelSerializer):
     '''
-    1.1 Password and Password2 fields are checked and validates password strength using Django's built-in validators (django.contrib.auth.password_validation.validate_password)
-    1.2 `password` is write-only and never returned in API responses
-    2. Custom Validate() function is called to compare password and password1
+    1. Password and Password2 fields are checked and validates password strength using Django's built-in validators (django.contrib.auth.password_validation.validate_password)
+    2. `password` is write-only and never returned in API responses
+    3. Custom Validate() function is called to compare password and password1
     '''
     password = serializers.CharField(
         write_only=True,
@@ -32,7 +32,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('username', 'password', 'password2', 'email', 'first_name', 'last_name', 'phone_number') # These fields are already present in AbstractUser class of Django 
+        fields = ('username', 'password', 'password2', 'email', 'first_name', 'last_name', 'phone_number') # These fields are already present in AbstractUser class of Django excpet password2
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password2']:

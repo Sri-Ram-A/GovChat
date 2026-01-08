@@ -34,16 +34,9 @@ export async function REQUEST(
   options?: { isMultipart?: boolean }
 ) {
   const headers: Record<string, string> = {};
-
-  if (!options?.isMultipart) {
-    headers["Content-Type"] = "application/json";
-  }
-
+  if (!options?.isMultipart) { headers["Content-Type"] = "application/json"; }
   const token = localStorage.getItem("access");
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
+  if (token) { headers["Authorization"] = `Bearer ${token}`; }
   const res = await fetch(
     `${API_URL}api/${url}`,
     {

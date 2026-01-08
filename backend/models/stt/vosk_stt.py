@@ -25,7 +25,6 @@ class AudioTranscriber:
         self.recognizer.SetWords(True)
     
     def accept_audio_chunk(self, pcm_data):
-        # Your existing code...
         if self.recognizer :
             if self.recognizer.AcceptWaveform(pcm_data):
                 result = json.loads(self.recognizer.Result())
@@ -35,7 +34,6 @@ class AudioTranscriber:
                 return {"text": partial.get("partial", ""), "type": "partial"}
         
     def flush(self):
-        # Your existing code...
         if self.recognizer:
             result = json.loads(self.recognizer.FinalResult())
             return {"text": result.get("text", ""), "type": "final"}

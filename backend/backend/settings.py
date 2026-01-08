@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'rest_framework',###
     'rest_framework_simplejwt',###
     'drf_spectacular',###
+    'drf_api_logger',###
 ]
 ###
 REST_FRAMEWORK = {
@@ -67,6 +68,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'drf_api_logger.middleware.api_logger_middleware.APILoggerMiddleware',###
 ]
 
 ROOT_URLCONF = 'backend.urls'
@@ -166,3 +168,5 @@ SWAGGER_SETTINGS = {
         }
     }
 }
+### drf-api-logger
+DRF_API_LOGGER_DATABASE = True 

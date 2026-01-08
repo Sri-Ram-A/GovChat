@@ -31,10 +31,7 @@ class CitizenRegistrationAPIView(APIView):
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
             citizen = serializer.save()
-            return Response({
-                "message": "Registration successful",
-            }, status=status.HTTP_201_CREATED)
-        logger.debug(serializer.errors)
+            return Response({"message": "Registration successful",}, status=status.HTTP_201_CREATED)
         return Response({"message": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 class CitizenLoginAPIView(APIView):
