@@ -200,7 +200,7 @@ export default function AllComplaintsPage() {
                         className="space-y-1"
                       >
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          {ev.media_type === "image" && <ImageIcon className="h-4 w-4" />}
+                          {ev.media_type === "image" && <ImageIcon className="h-4 w-4" /> && ev.caption && <span className="italic">- {ev.caption}</span>}
                           {ev.media_type === "video" && <Video className="h-4 w-4" />}
                           {ev.media_type === "audio" && <Music className="h-4 w-4" />}
                           {ev.media_type.toUpperCase()}

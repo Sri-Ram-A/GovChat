@@ -99,7 +99,7 @@ export default function PostComplaintPage() {
               value={form.description}
               onChange={(e) =>
                 setForm({ ...form, description: e.target.value })
-              }/>
+              } />
           </FormSection>
 
 
@@ -111,13 +111,13 @@ export default function PostComplaintPage() {
               <FormField
                 label="City"
                 value={form.city}
-                onChange={(v) => setForm({ ...form, city: v })}/>
+                onChange={(v) => setForm({ ...form, city: v })} />
 
               {/* Pincode */}
               <FormField
                 label="Pincode"
                 value={form.pincode}
-                onChange={(v) => setForm({ ...form, pincode: v })}/>
+                onChange={(v) => setForm({ ...form, pincode: v })} />
 
               {/* Department */}
               <div className="space-y-2">

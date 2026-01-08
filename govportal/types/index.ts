@@ -24,6 +24,7 @@ export interface Evidence {
   complaint: number;
   file: string; // URL or relative path
   media_type: MediaType;
+  caption: string;
 }
 
 export type ComplaintStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";

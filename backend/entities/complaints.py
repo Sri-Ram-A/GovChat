@@ -57,6 +57,8 @@ class Evidence(models.Model):
     complaint = models.ForeignKey(Complaint,on_delete=models.CASCADE,related_name='evidences')
     file = models.FileField(upload_to='evidences/',null=True, blank=True)
     media_type = models.CharField(max_length=50, choices=MEDIA_TYPE_CHOICES)
+    caption = models.CharField(max_length=255,null=True,blank=True)
+    suggested_department = models.ForeignKey(Department,on_delete=models.PROTECT,related_name='evidences',null=True,blank=True)
     class Meta:
         db_table = 'evidences'
         verbose_name_plural = 'Evidences'

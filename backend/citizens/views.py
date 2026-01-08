@@ -11,8 +11,8 @@ from entities.complaints import Complaint
 import serializer.citizens as citizens_serializer
 import serializer.complaints as complaints_serializer
 import serializer.base as base_serializer
+from .itt_client import itt
 from loguru import logger
-from rest_framework.generics import CreateAPIView
 
 class CitizenListAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -84,8 +84,23 @@ class EvidenceUploadView(APIView):
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=201)
+        
+        file_obj = request.FILES.get("file")
+        media_type = serializer.validated_data.get("media_type")
+        caption = None
+
+        if file_obj and media_type == "image":
+            image_bytes = file_obj.read()
+            caption, inference_time = itt.generate_caption_from_bytes(image_bytes)
+            logger.debug(f"Caption: {caption} | Inference time: {inference_time:.3f}s")
+            # Reset pointer so Django can save file
+            file_obj.seek(0)
+        # Save model with caption
+        evidence = serializer.save(caption=caption)
+        return Response(
+            self.serializer_class(evidence).data,
+            status=status.HTTP_201_CREATED
+        )
 
 class AllComplaintsView(APIView):
     # permission_classes = [IsAdminUser]

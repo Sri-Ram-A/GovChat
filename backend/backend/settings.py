@@ -168,5 +168,13 @@ SWAGGER_SETTINGS = {
         }
     }
 }
+# Source - https://stackoverflow.com/a
+# Posted by LondonAppDev, modified by community. See post 'Timeline' for change history
+# Retrieved 2026-01-08, License - CC BY-SA 4.0
+
+SPECTACULAR_SETTINGS = {
+    'COMPONENT_SPLIT_REQUEST': True # To allow FileField in swagger UI
+}
+
 ### drf-api-logger
 DRF_API_LOGGER_DATABASE = True 
