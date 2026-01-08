@@ -14,13 +14,13 @@ import { REQUEST } from "@/services/api";
 import type { MediaType, ComplaintCreatePayload, Department, } from "@/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 export default function PostComplaintPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [complaintId, setComplaintId] = useState<number | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
-
   const [form, setForm] = useState<ComplaintCreatePayload>({
     title: "",
     description: "",
@@ -70,19 +70,36 @@ export default function PostComplaintPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10 ">
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-3xl">
-            Register a Complaint
-          </CardTitle>
-          <CardDescription>
-            Provide accurate details to help authorities resolve the issue
-            faster.
-          </CardDescription>
-        </CardHeader>
+    <div className="max-w-3xl mx-auto px-4 py-10 min-h-full">
+      <div
+        className={cn(
+          "absolute inset-0 -z-10",
+          "[background-size:20px_20px]",
+          "[background-image:radial-gradient(#d4d4d4_1px,transparent_2px)]",
+          "dark:[background-image:radial-gradient(#404040_1px,transparent_2px)]"
+        )}
+      />
 
-        <CardContent className="space-y-10">
+      {/* Radial gradient overlay for faded effect */}
+      <div className="absolute inset-0 bg-white [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-black" />
+
+
+      <Card className="shadow-lg">
+        {/* Hero Section */}
+        <CardHeader className="mb-12">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary text-sm text-muted-foreground mb-4">
+            <FileText className="h-4 w-4" />
+            <span>New Complaint</span>
+          </div>
+          <h1 className="font-serif text-4xl md:text-5xl font-medium tracking-tight text-foreground mb-2 text-balance">
+            Register a Complaint
+          </h1>
+          <p className="text-lg text-foreground max-w-2xl leading-relaxed">
+            Provide accurate details to help authorities resolve your issue efficiently. All submissions are reviewed
+            within 24-48 hours.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-8">
 
           {/* Complaint */}
           <FormSection title="Complaint Information" icon={<FileText />}>
@@ -196,7 +213,7 @@ export default function PostComplaintPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </div >
 
   );
 }
