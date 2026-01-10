@@ -4,22 +4,23 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, MapPin, Building2 } from "lucide-react";
+import { Upload, FileText, MapPin, Camera } from "lucide-react";
 
 import FormField from "@/components/reusables/FormField";
 import FormSection from "@/components/reusables/FormSection";
 import { REQUEST } from "@/services/api";
-import type { MediaType, ComplaintCreatePayload, Department, } from "@/types";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select";
+import type { MediaType, ComplaintCreatePayload, Department } from "@/types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 export default function PostComplaintPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [complaintId, setComplaintId] = useState<number | null>(null);
+  const [uploadingEvidence, setUploadingEvidence] = useState(false);
+  const [draftComplaintId, setDraftComplaintId] = useState<number | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [form, setForm] = useState<ComplaintCreatePayload>({
     title: "",
@@ -29,9 +30,7 @@ export default function PostComplaintPage() {
     pincode: "",
   });
 
-  const [files, setFiles] = useState<
-    { file: File; media_type: MediaType }[]
-  >([]);
+  const [files, setFiles] = useState<Array<{ file: File; media_type: MediaType }>>([]);
 
   /* ---------------- Fetch Departments ---------------- */
   useEffect(() => {
@@ -40,33 +39,147 @@ export default function PostComplaintPage() {
       .catch(console.error);
   }, []);
 
-  /* ---------------- Submit Complaint ---------------- */
+  /* ---------------- Get User Location ----------------*/
+  function getUserLocation(): Promise<{ latitude: number; longitude: number }> {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error("Geolocation not supported"));
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        },
+        (error) => {
+          reject(error);
+        }
+      );
+    });
+  }
+
+
+/* ---------------- Upload Evidence & Get AI Suggestions ---------------- */
+async function uploadEvidenceAndAnalyze() {
+  if (files.length === 0) {
+    alert("Please select a photo first");
+    return;
+  }
+
+  // Check if geolocation is supported
+  if (!navigator.geolocation) {
+    alert("Geolocation is not supported by your browser");
+    return;
+  }
+
+  setUploadingEvidence(true);
+
+  // Get user location using geolocation API
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      try {
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+
+        console.log("User location:", latitude, longitude);
+
+        // Upload first image with location
+        const firstImage = files[0];
+        const fd = new FormData();
+        fd.append("file", firstImage.file);
+        fd.append("media_type", firstImage.media_type);
+        fd.append("latitude", String(latitude));
+        fd.append("longitude", String(longitude));
+
+        const response = await REQUEST("POST", "citizens/evidence/upload/", fd, {
+          isMultipart: true,
+        });
+
+        console.log("Response:", response);
+
+        // Extract AI suggestions from response
+        if (response && response.suggestions) {
+          const suggestions = response.suggestions;
+
+          // Auto-fill form with AI suggestions
+          setForm({
+            title: suggestions.title || "",
+            description: suggestions.description || "",
+            department: suggestions.department_id || 0,
+            city: suggestions.city || "",
+            pincode: suggestions.pincode || "",
+          });
+
+          // Store draft complaint ID
+          setDraftComplaintId(response.draft_complaint_id);
+
+          alert("Photo analyzed! Please review the auto-filled details below.");
+        }
+      } catch (error: any) {
+        console.error("Evidence upload failed:", error);
+        alert("Failed to upload and analyze photo. Please try again.");
+      } finally {
+        setUploadingEvidence(false);
+      }
+    },
+    (error) => {
+      // Geolocation error handler
+      console.error("Geolocation error:", error);
+      
+      let errorMessage = "Failed to get your location. ";
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          errorMessage += "Please allow location access.";
+          break;
+        case error.POSITION_UNAVAILABLE:
+          errorMessage += "Location information is unavailable.";
+          break;
+        case error.TIMEOUT:
+          errorMessage += "Location request timed out.";
+          break;
+        default:
+          errorMessage += "An unknown error occurred.";
+      }
+      
+      alert(errorMessage);
+      setUploadingEvidence(false);
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0
+    }
+  );
+}
+  /* ---------------- Submit Final Complaint ---------------- */
   async function submitComplaint() {
+    if (!draftComplaintId) {
+      alert("Please upload a photo first");
+      return;
+    }
+
     setLoading(true);
     try {
-      const res = await REQUEST("POST", "citizens/complaints/", form);
-      setComplaintId(res.id);
+      const payload = {
+        title: form.title,
+        description: form.description,
+        department: form.department,
+        city: form.city,
+        pincode: form.pincode,
+        draft_complaint_id: draftComplaintId,
+      };
+
+      await REQUEST("POST", "citizens/complaints/", payload);
+      router.push("/citizen/complaints");
+    } catch (error) {
+      console.error("Complaint submission failed:", error);
+      alert("Failed to submit complaint. Please try again.");
     } finally {
       setLoading(false);
     }
-  }
-
-  /* ---------------- Upload Evidences ---------------- */
-  async function uploadEvidences() {
-    if (!complaintId) return;
-
-    for (const item of files) {
-      const fd = new FormData();
-      fd.append("complaint", String(complaintId));
-      fd.append("file", item.file);
-      fd.append("media_type", item.media_type);
-
-      await REQUEST("POST", "citizens/evidence/upload/", fd, {
-        isMultipart: true,
-      });
-    }
-
-    router.push("/citizen/complaints");
   }
 
   return (
@@ -80,13 +193,10 @@ export default function PostComplaintPage() {
         )}
       />
 
-      {/* Radial gradient overlay for faded effect */}
-      <div className="absolute inset-0 bg-white [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-black" />
+      <div className="absolute inset-0 bg-white [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-black -z-10" />
 
-
-      <Card className="shadow-lg">
-        {/* Hero Section */}
-        <CardHeader className="mb-12">
+      <Card className="shadow-lg relative z-10">
+        <CardHeader className="mb-8">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary text-sm text-muted-foreground mb-4">
             <FileText className="h-4 w-4" />
             <span>New Complaint</span>
@@ -95,50 +205,100 @@ export default function PostComplaintPage() {
             Register a Complaint
           </h1>
           <p className="text-lg text-foreground max-w-2xl leading-relaxed">
-            Provide accurate details to help authorities resolve your issue efficiently. All submissions are reviewed
-            within 24-48 hours.
+            Upload a photo of the issue for AI-powered analysis and auto-fill. Review and submit your complaint.
           </p>
         </CardHeader>
+        
         <CardContent className="space-y-8">
+          {/* Evidence Upload - STEP 1 */}
+          <FormSection title="Step 1: Upload Photo for Analysis" icon={<Camera />}>
+            <div className="space-y-4">
+              <input
+                type="file"
+                accept="image/*"
+                className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                onChange={(e) => {
+                  if (!e.target.files) return;
+                  const uploaded = Array.from(e.target.files).map((f) => ({
+                    file: f,
+                    media_type: "image" as MediaType,
+                  }));
+                  setFiles(uploaded);
+                }}
+              />
 
-          {/* Complaint */}
-          <FormSection title="Complaint Information" icon={<FileText />}>
-            <FormField
-              label="Complaint Title"
-              value={form.title}
-              onChange={(v) => setForm({ ...form, title: v })}
-              required
-              className="mb-4"
-            />
-            <Textarea
-              placeholder="Explain the issue in detail..."
-              className="min-h-35"
-              value={form.description}
-              onChange={(e) =>
-                setForm({ ...form, description: e.target.value })
-              } />
+              {files.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {files.map((f, i) => (
+                    <Badge key={i} variant="secondary">
+                      {f.media_type} • {f.file.name}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
+              {/* ALWAYS SHOW THIS BUTTON when files are selected and not yet uploaded */}
+              {files.length > 0 && !draftComplaintId && (
+                <Button
+                  className="w-full text-base"
+                  onClick={uploadEvidenceAndAnalyze}
+                  disabled={uploadingEvidence}
+                >
+                  {uploadingEvidence ? "Analyzing..." : "Upload & Analyze Photo"}
+                </Button>
+              )}
+
+              {/* Success indicator */}
+              {draftComplaintId && (
+                <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                  <p className="text-sm text-green-800 dark:text-green-200">
+                    ✓ Photo analyzed successfully! Review the details below and submit.
+                  </p>
+                </div>
+              )}
+            </div>
           </FormSection>
 
+          {/* Complaint Information - STEP 2 */}
+          <FormSection title="Step 2: Review & Edit Details" icon={<FileText />}>
+            <div className="space-y-4">
+              <FormField
+                label="Complaint Title"
+                value={form.title}
+                onChange={(v) => setForm({ ...form, title: v })}
+                required
+              />
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea
+                  placeholder="Explain the issue in detail..."
+                  className="min-h-[100px]"
+                  value={form.description}
+                  onChange={(e) =>
+                    setForm({ ...form, description: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+          </FormSection>
 
-          {/* Location */}
+          {/* Location Details */}
           <FormSection title="Location Details" icon={<MapPin />}>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-              {/* City */}
               <FormField
                 label="City"
                 value={form.city}
-                onChange={(v) => setForm({ ...form, city: v })} />
+                onChange={(v) => setForm({ ...form, city: v })}
+              />
 
-              {/* Pincode */}
               <FormField
                 label="Pincode"
                 value={form.pincode}
-                onChange={(v) => setForm({ ...form, pincode: v })} />
+                onChange={(v) => setForm({ ...form, pincode: v })}
+              />
 
-              {/* Department */}
               <div className="space-y-2">
-                <Label className="mb-4">Department</Label>
+                <Label>Department</Label>
                 <Select
                   value={form.department ? String(form.department) : ""}
                   onValueChange={(value) =>
@@ -158,62 +318,30 @@ export default function PostComplaintPage() {
                   </SelectContent>
                 </Select>
               </div>
-
             </div>
           </FormSection>
 
-
-          {/* Evidence */}
-          <FormSection title="Upload Evidence" icon={<Upload />}>
-            <input
-              type="file"
-              multiple
-              className="block w-full text-sm"
-              onChange={(e) => {
-                if (!e.target.files) return;
-                const uploaded = Array.from(e.target.files).map((f) => ({
-                  file: f,
-                  media_type: f.type.startsWith("image")
-                    ? "image"
-                    : f.type.startsWith("video")
-                      ? "video"
-                      : f.type.startsWith("audio")
-                        ? "audio"
-                        : "document",
-                }));
-                setFiles(uploaded);
-              }}
-            />
-
-            <div className="flex flex-wrap gap-2 ">
-              {files.map((f, i) => (
-                <Badge key={i} variant="secondary">
-                  {f.media_type} • {f.file.name}
-                </Badge>
-              ))}
-            </div>
-          </FormSection>
-
-          {/* Actions */}
-          {!complaintId ? (
+          {/* Submit Button - STEP 3 */}
+          {draftComplaintId && (
             <Button
-              className="w-full text-base"
+              className="w-full text-base h-12"
               onClick={submitComplaint}
-              disabled={loading || !form.department}
+              disabled={loading || !form.department || !form.title}
             >
-              Submit Complaint
+              {loading ? "Submitting..." : "Submit Complaint"}
             </Button>
-          ) : (
-            <Button
-              className="w-full text-base"
-              onClick={uploadEvidences}
-            >
-              Upload Evidence & Finish
-            </Button>
+          )}
+
+          {/* Info message if no draft yet */}
+          {!draftComplaintId && (
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                ℹ️ Please upload and analyze a photo first to continue.
+              </p>
+            </div>
           )}
         </CardContent>
       </Card>
-    </div >
-
+    </div>
   );
 }

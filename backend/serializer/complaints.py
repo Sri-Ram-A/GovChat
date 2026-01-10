@@ -29,7 +29,11 @@ class EvidenceSerializer(serializers.ModelSerializer):
         fields = ['id', 'complaint', 'file', 'media_type','caption','suggested_department']
         # These fields will be included in the API response, but the client is NOT allowed to send or modify them in the request.
         read_only_fields = ['caption', 'suggested_department']
-
+        extra_kwargs = {
+            'complaint': {'required': False},
+            'caption': {'required': False},
+            'suggested_department': {'required': False}
+        }
 
 class ComplaintListSerializer(serializers.ModelSerializer):
     evidences = EvidenceSerializer(many=True)

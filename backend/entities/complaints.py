@@ -8,6 +8,7 @@ class Complaint(models.Model):
         ('IN_PROGRESS', 'In Progress'),
         ('RESOLVED', 'Resolved'),
         ('CLOSED', 'Closed'),
+        ('DRAFT', 'draft'),
     ]
 
     citizen = models.ForeignKey(CitizenProfile,on_delete=models.CASCADE,related_name='complaints')
