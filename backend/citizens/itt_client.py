@@ -12,6 +12,6 @@ class ITTClient:
         response = self.stub.GenerateCaption(
             ImageRequest(image=image_bytes)
         )
-        return response.caption, response.inference_time
+        return response.caption, response.predicted_department, response.confidence, response.inference_time
 
 itt = ITTClient("localhost:50053")

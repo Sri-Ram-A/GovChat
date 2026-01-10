@@ -27,17 +27,14 @@ export default function LoginPage() {
       const res = await REQUEST("POST", "citizens/login/", { username: form.username, password: form.password });
       // Expect token in res.access or res.token — adjust accordingly
       if (res?.access) {
-        setStoredToken(res.access);
-        toast.success("Welcome back!");
-        router.push("/citizen/home");
-      } else if (res?.token) {
-        setStoredToken(res.token);
+        // Store the access token 
+        setStoredToken(res.access);        
         toast.success("Welcome back!");
         router.push("/citizen/home");
       } else {
-        // If backend returns user object and no token, assume login was successful and redirect
-        toast.success("Logged in");
-        router.push("/citizen/home");
+        // No token received - this should NOT happen on successful login
+        console.error("Login response missing token:", res);
+        throw new Error("Login failed - no token received");
       }
     } catch (err: any) {
       const message = err?.message || "Invalid credentials";

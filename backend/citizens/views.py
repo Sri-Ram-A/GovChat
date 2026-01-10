@@ -7,6 +7,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 
 from entities.citizens import CitizenProfile
 from entities.complaints import Complaint
+from entities.governance import Department
 
 import serializer.citizens as citizens_serializer
 import serializer.complaints as complaints_serializer
@@ -88,15 +89,30 @@ class EvidenceUploadView(APIView):
         file_obj = request.FILES.get("file")
         media_type = serializer.validated_data.get("media_type")
         caption = None
-
+   
         if file_obj and media_type == "image":
+            print("here")
             image_bytes = file_obj.read()
-            caption, inference_time = itt.generate_caption_from_bytes(image_bytes)
-            logger.debug(f"Caption: {caption} | Inference time: {inference_time:.3f}s")
+            caption,pred_dept,confidance, inference_time = itt.generate_caption_from_bytes(image_bytes)
+            logger.debug("Inference | caption='%s' | dept='%s' | confidence=%.2f | time=%.3fs",
+                caption,
+                pred_dept,
+                confidance,
+                inference_time,
+            )
+            print(pred_dept,"-"*100 )
             # Reset pointer so Django can save file
             file_obj.seek(0)
         # Save model with caption
-        evidence = serializer.save(caption=caption)
+        suggested_department = None
+
+        if pred_dept:
+            suggested_department = (
+                Department.objects
+                .filter(name__iexact=pred_dept)
+                .first()
+            )
+        evidence = serializer.save(caption=caption,suggested_department=suggested_department)
         return Response(
             self.serializer_class(evidence).data,
             status=status.HTTP_201_CREATED

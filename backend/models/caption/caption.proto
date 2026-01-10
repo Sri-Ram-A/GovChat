@@ -2,19 +2,18 @@ syntax = "proto3";
 
 package caption;
 
-// Service definition
 service ImageCaptionService {
   rpc GenerateCaption (ImageRequest) returns (CaptionResponse);
 }
 
-// Client sends raw image bytes
 message ImageRequest {
   bytes image = 1;
 }
 
-// Server returns caption + inference time
 message CaptionResponse {
   string caption = 1;
   float inference_time = 2;
+  string predicted_department = 3;
+  float confidence = 4;
 }
 // python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. caption.proto

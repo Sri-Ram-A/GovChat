@@ -22,12 +22,12 @@ def generate_caption(image_file):
         output_ids = model.generate(
             pixel_values,
             max_length=30,
-            num_beams=4
+            num_beams=14,
         )
 
     caption = tokenizer.decode(output_ids[0], skip_special_tokens=True)
     return caption
 
 if __name__ == "__main__":
-    file_path = r"C:\Users\SriRam.A\Documents\login_bg.jpg"
+    file_path = r"C:\Users\tjsre\Downloads\download.jpg"
     print(generate_caption(file_path))
