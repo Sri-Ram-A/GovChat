@@ -106,12 +106,23 @@ class ImageCaptionService(caption_pb2_grpc.ImageCaptionServiceServicer):
 
 
 def serve():
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=MAX_WORKERS))
-    caption_pb2_grpc.add_ImageCaptionServiceServicer_to_server(ImageCaptionService(), server)
+    # Define options for larger message sizes (50MB)
+    options = [
+        ('grpc.max_send_message_length', 50 * 1024 * 1024),
+        ('grpc.max_receive_message_length', 50 * 1024 * 1024),
+    ]
+    server = grpc.server(
+        futures.ThreadPoolExecutor(max_workers=MAX_WORKERS),
+        options=options
+    )
+    caption_pb2_grpc.add_ImageCaptionServiceServicer_to_server(
+        ImageCaptionService(), 
+        server
+    )
     server.add_insecure_port(f"[::]:{PORT}")
     server.start()
     logger.info(f"gRPC server running on port {PORT}")
     server.wait_for_termination()
-
+    
 if __name__ == "__main__":
     serve()

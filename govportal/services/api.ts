@@ -1,4 +1,4 @@
-export const API_URL = "http://localhost:8000/"
+export const API_URL = "https://192.168.1.6:8000/"
 
 type HttpMethod = "GET" | "POST" | "PUT" | "DELETE"
 
