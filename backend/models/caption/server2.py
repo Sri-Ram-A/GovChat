@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 from transformers import VisionEncoderDecoderModel, ViTImageProcessor, AutoTokenizer
 from PIL import Image
-from caption_pb2 import CaptionResponse
+from caption_pb2 import CaptionResponse  # type: ignore
 import caption_pb2_grpc
 from loguru import logger
 

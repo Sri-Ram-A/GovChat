@@ -36,7 +36,7 @@ INSTALLED_APPS = [
     'entities', ###
     'django.contrib.admin',
     "daphne", ###
-    'django_extensions',
+    'django_extensions',###
     "corsheaders",
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -46,7 +46,6 @@ INSTALLED_APPS = [
     'rest_framework',###
     'rest_framework_simplejwt',###
     'drf_spectacular',###
-    'drf_api_logger',###
 ]
 ###
 REST_FRAMEWORK = {

@@ -33,6 +33,6 @@ app.prepare().then(() => {
     })
     .listen(port, () => {
       console.log(`> Ready on https://${hostname}:${port}`)
-      console.log(`> Access on network: https://192.168.1.6:${port}`)
+      console.log(`> Access on network: https://192.168.1.3:${port}`)
     })
 })

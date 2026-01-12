@@ -1,4 +1,6 @@
-export const API_URL = "https://192.168.1.6:8000/"
+// export const API_URL = "https://192.168.1.6:8000/" //Sree
+// export const API_URL = "https://192.168.1.3:8000/" //Ram
+export const API_URL = "https://127.0.0.1:8000/" //Ram
 
 type HttpMethod = "GET" | "POST" | "PUT" | "DELETE"
 

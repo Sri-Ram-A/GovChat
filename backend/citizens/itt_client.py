@@ -20,4 +20,4 @@ class ITTClient:
         )
         return response.caption, response.predicted_department, response.confidence, response.inference_time
 
-itt = ITTClient("192.168.1.6:50053")
+itt = ITTClient("192.168.1.3:50053")

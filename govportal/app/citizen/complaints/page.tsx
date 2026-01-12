@@ -138,7 +138,7 @@ export default function AllComplaintsPage() {
 
         {/* Empty State */}
         {!loading && complaints.length === 0 && (
-          <Card className="p-10 text-center text-muted-foreground">
+          <Card className="w-full min-h-fit p-10 text-center text-muted-foreground">
             No complaints found.
           </Card>
         )}
