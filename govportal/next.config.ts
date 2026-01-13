@@ -1,52 +1,18 @@
 import type { NextConfig } from "next";
 
+const devOrigins = process.env.DEV_ORIGINS?.split(",") ?? [];
+const imageHosts = process.env.IMAGE_HOSTS?.split(",") ?? [];
+
 const nextConfig: NextConfig = {
-  /* config options here */
   reactCompiler: true,
-  allowedDevOrigins: [
-      '192.168.1.6:3000',
-      '192.168.1.6',
-      '192.168.1.3',
-      '192.168.1.3:3000',
-  ],
+
+  allowedDevOrigins: devOrigins,
+
   images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "images.unsplash.com",
-        pathname: "/**",
-      },
-      {
-        protocol: "http",
-        hostname: "localhost",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "localhost",
-        pathname: "/**",
-      },
-      {
-        protocol: "http",
-        hostname: "192.168.1.6",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "192.168.1.6",
-        pathname: "/**",
-      },
-      {
-        protocol: "http",
-        hostname: "192.168.1.3",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "192.168.1.3",
-        pathname: "/**",
-      },
-    ],
+    remotePatterns: imageHosts.flatMap((host) => ([
+      { protocol: "http", hostname: host, pathname: "/**" },
+      { protocol: "https", hostname: host, pathname: "/**" },
+    ])),
   },
 };
 

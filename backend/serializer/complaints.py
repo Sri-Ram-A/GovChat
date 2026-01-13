@@ -1,16 +1,15 @@
 from rest_framework import serializers
 import entities.complaints as complaints_entity
 
-
-# serializers.py
 class ComplaintCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = complaints_entity.Complaint
         fields = [
-            "title", "description", "department", 
+            "department", 
             "address_line_1", "address_line_2",
             "landmark", "city", "pincode",
-            "latitude", "longitude"
+            "latitude","longitude",
+            "title","description", 
         ]
         extra_kwargs = {
             'latitude': {'required': False},
@@ -22,7 +21,19 @@ class ComplaintCreateSerializer(serializers.ModelSerializer):
         citizen_profile = request.user.citizen_profile
         complaint = complaints_entity.Complaint.objects.create(citizen=citizen_profile, **validated_data)
         return complaint
-    
+
+class ComplaintUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = complaints_entity.Complaint
+        fields = [
+            "title","description","department","address_line_1","address_line_2","landmark","city","pincode","latitude","longitude","status",
+        ]
+        extra_kwargs = {
+            field: {"required": False}
+            for field in fields
+        }
+
+
 class EvidenceSerializer(serializers.ModelSerializer):
     class Meta:
         model = complaints_entity.Evidence
@@ -37,7 +48,6 @@ class EvidenceSerializer(serializers.ModelSerializer):
 
 class ComplaintListSerializer(serializers.ModelSerializer):
     evidences = EvidenceSerializer(many=True)
-
     class Meta:
         model = complaints_entity.Complaint
         fields = "__all__"

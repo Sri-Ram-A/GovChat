@@ -98,13 +98,13 @@ export default function AllComplaintsPage() {
         <div
           className={cn(
             "absolute inset-0",
-            "[background-size:20px_20px]",
-            "[background-image:radial-gradient(#d4d4d4_1px,transparent_2px)]",
-            "dark:[background-image:radial-gradient(#404040_1px,transparent_2px)]",
+            "bg-size-[20px_20px]",
+            "bg-[radial-gradient(#d4d4d4_1px,transparent_2px)]",
+            "dark:bg-[radial-gradient(#404040_1px,transparent_2px)]",
           )}
         />
         {/* Radial gradient overlay for faded effect */}
-        <div className="absolute inset-0 bg-white [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-black" />
+        <div className="absolute inset-0 bg-white mask-[radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-black" />
       </div>
 
       <div className="relative max-w-3xl mx-auto space-y-6 px-4 py-8">
@@ -114,13 +114,17 @@ export default function AllComplaintsPage() {
             Community Complaints
           </h1>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button asChild variant="outline">
               <Link href="/citizen/post">New Complaint</Link>
             </Button>
 
             <Button asChild>
               <Link href="/citizen/chat">Chat with Us</Link>
+            </Button>
+
+            <Button asChild className="bg-green-300">
+              <Link href="/citizen/map">View Map</Link>
             </Button>
           </div>
         </div>
@@ -192,7 +196,7 @@ export default function AllComplaintsPage() {
                 </p>
 
                 {/* Evidences */}
-                {c.evidences?.length > 0 && (
+                {c.evidences?.length !=null && c.evidences?.length > 0 && (
                   <div className="space-y-3">
                     {c.evidences.map((ev) => (
                       <div
@@ -225,7 +229,7 @@ export default function AllComplaintsPage() {
                     size="sm"
                     className="gap-1"
                   >
-                    <Link href={`/complaints/${c.id}`}>
+                    <Link href={`citizen/complaints/${c.id}`}>
                       <Eye className="h-4 w-4" />
                       View
                     </Link>

@@ -17,7 +17,6 @@ import serializer.base as base_serializer
 import serializer.governance as governance_serializer
 from .itt_client import itt
 from loguru import logger
-import requests
 from .helper import (
     validate_geolocation,
     create_draft_complaint,
@@ -32,7 +31,6 @@ from .helper import (
 class CitizenListAPIView(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = citizens_serializer.CitizenProfileSerializer
-
     def get(self, request):
         citizens = CitizenProfile.objects.select_related('user').all()
         serializer = self.serializer_class(citizens, many=True)
@@ -41,7 +39,6 @@ class CitizenListAPIView(APIView):
 class CitizenRegistrationAPIView(APIView):
     permission_classes = [AllowAny]
     serializer_class = citizens_serializer.CitizenRegistrationSerializer
-
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
@@ -52,7 +49,6 @@ class CitizenRegistrationAPIView(APIView):
 class CitizenLoginAPIView(APIView):
     permission_classes = [AllowAny]
     serializer_class = base_serializer.UserLoginSerializer # Very helpful for drf-spectacular to infer the required inputs
-
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -62,13 +58,15 @@ class CitizenLoginAPIView(APIView):
 
 class CitizenComplaintView(APIView):
     permission_classes = [IsAuthenticated]
-
+    # For the purpose of Swagger 
     def get_serializer_class(self):
         """Returns different serializer depending on HTTP method"""
         if self.request.method == "GET":
             return complaints_serializer.ComplaintListSerializer
         elif self.request.method == "POST":
             return complaints_serializer.ComplaintCreateSerializer
+        elif self.request.method == "PATCH":
+            return complaints_serializer.ComplaintUpdateSerializer
         return None  
 
     def get(self, request):
@@ -80,55 +78,57 @@ class CitizenComplaintView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request):
-        """Create or finalize complaint"""
-        draft_complaint_id = request.data.get("draft_complaint_id")
-        
-        # ---------------- Finalize Draft Complaint ----------------
-        if draft_complaint_id:
-            try:
-                complaint = Complaint.objects.get(
-                    id=draft_complaint_id,
-                    citizen=request.user.citizen_profile,
-                    status="DRAFT"
-                )
-                
-                # Update with user's final edits
-                complaint.title = request.data.get("title", complaint.title)
-                complaint.description = request.data.get("description", complaint.description)
-                
-                department_id = request.data.get("department")
-                if department_id:
-                    complaint.department_id = department_id
-                
-                complaint.city = request.data.get("city", complaint.city)
-                complaint.pincode = request.data.get("pincode", complaint.pincode)
-                complaint.status = "OPEN"  # Change status to OPEN
-                complaint.save()
-                
-                logger.debug("Finalized draft complaint | id=%s", complaint.id)
-                
-                return Response({
-                    "message": "Complaint submitted successfully",
-                    "id": complaint.id
-                }, status=status.HTTP_200_OK)
-                
-            except Complaint.DoesNotExist:
-                return Response(
-                    {"error": "Draft complaint not found"},
-                    status=status.HTTP_404_NOT_FOUND
-                )
-        
-        # ---------------- Create New Complaint (Fallback) ----------------
         serializer_class = self.get_serializer_class()
-        if serializer_class:
-            serializer = serializer_class(data=request.data, context={"request": request})
-            if serializer.is_valid():
-                complaint = serializer.save()
-                return Response({
-                    "message": "Complaint submitted successfully",
-                    "id": complaint.id
-                }, status=status.HTTP_201_CREATED)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if serializer_class : serializer = serializer_class(
+            data=request.data,
+            context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        complaint = serializer.save()
+        return Response(
+            {
+                "message": "Complaint created successfully",
+                "id": complaint.id
+            },
+            status=status.HTTP_201_CREATED
+        )
+
+    def patch(self, request):
+        complaint_id = request.data.get("complaint_id")
+        if not complaint_id:
+            return Response(
+                {"error": "complaint_id is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        try:
+            complaint = Complaint.objects.get(
+                id=complaint_id,
+                citizen=request.user.citizen_profile,
+                status="DRAFT"
+            )
+        except Complaint.DoesNotExist:
+            return Response(
+                {"error": "Draft complaint not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer_class = self.get_serializer_class()
+        if serializer_class : serializer = serializer_class(
+            complaint,
+            data=request.data,
+            partial=True,
+            context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save(status="OPEN")
+        return Response(
+            {
+                "message": "Complaint submitted successfully",
+                "id": complaint.id
+            },
+            status=status.HTTP_200_OK
+        )
+
         
 class EvidenceUploadView(APIView):
     permission_classes = [IsAuthenticated]

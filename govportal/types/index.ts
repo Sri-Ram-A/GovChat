@@ -44,6 +44,8 @@ export interface Complaint {
   address_line_1?: string;
   address_line_2?: string;
   landmark?: string;
+  latitude?:string;
+  longitude?:string;
 }
 export interface ComplaintCreatePayload {
   title: string;
