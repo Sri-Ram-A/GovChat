@@ -74,7 +74,7 @@ class ImageCaptionService(caption_pb2_grpc.ImageCaptionServiceServicer):
                     max_length=30,
                     num_beams=4,
                     pad_token_id=tokenizer.eos_token_id
-                )
+                ) # type: ignore
                 
                 caption = tokenizer.decode(output_ids[0], skip_special_tokens=True)
                 

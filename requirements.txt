@@ -17,3 +17,4 @@ pillow
 huggingface_hub[hf_xet]
 drf-api-logger
 Faker
+python-dotenv

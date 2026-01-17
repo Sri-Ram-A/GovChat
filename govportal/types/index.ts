@@ -39,7 +39,6 @@ export interface Complaint {
   timestamp: string; // ISO
   likes_count: number;
   evidences?: Evidence[];
-  // optional convenience fields (if serializer adds them)
   citizen_username?: string;
   address_line_1?: string;
   address_line_2?: string;

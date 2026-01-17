@@ -45,6 +45,7 @@ export default function FormField({
 
         <Input
           id={id}
+          name={id}
           type={type as any}
           value={value as any}
           onChange={(e) => onChange && onChange(e.target.value)}

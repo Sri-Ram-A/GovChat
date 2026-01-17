@@ -1,6 +1,6 @@
-// export const API_URL = "https://192.168.1.6:8000/" //Sree
-// export const API_URL = "https://192.168.1.3:8000/" //Ram
-export const API_URL = "https://127.0.0.1:8000/" //Will Work for both 
+
+// export const API_URL = "http://127.0.0.1:8000/" // No cert
+export const API_URL = "https://127.0.0.1:8000/" // Use cert
 
 type HttpMethod = "GET" | "POST" | "PUT" | "DELETE"
 

@@ -9,7 +9,6 @@ my ip address was 192.168.1.6 , what you must do is get your pc ip addr then rep
 
 192.168.1.3 // sriram
 172.17.6.97 // rvce
-why certificate is that we need location access and you can use https 
-first use postman or createsuperuser then create sample domain , juridiction , department only one ; remaining is automated
+First create dummy departments in django-admin dashboard
 
 npm install ogl

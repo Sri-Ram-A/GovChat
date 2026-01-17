@@ -1,381 +1,329 @@
-"use client";
-
-import React, { useEffect, useRef, useState } from "react";
+"use client"
+import React, { useEffect, useState } from "react"
+import FormField from "@/components/reusables/FormField"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Camera, MapPin, Brain, UploadCloud, Trash2 } from "lucide-react";
-import { REQUEST } from "@/services/api";
-import type { MediaType, ComplaintCreatePayload, Department } from "@/types";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select";
+import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
+import { Department, ComplaintCreatePayload } from "@/types"
+import { REQUEST } from "@/services/api"
 
-import { Label } from "@/components/ui/label";
-import LightRays from "@/components/LightRays";
-import ElectricBorder from "@/components/ElectricBorder";
-import GlassCard from "@/components/GlassCard";
-import InfoBox from "@/components/InfoBox";
-import DecryptedText from "@/components/DecryptedText";
-import AnimatedInput from "@/components/reusables/decrpyText";
+const INITIAL_FORM_STATE: ComplaintCreatePayload = {
+  title: "",
+  description: "",
+  department: 0,
+  address_line_1: "",
+  address_line_2: "",
+  landmark: "",
+  city: "",
+  pincode: "",
+  latitude: 0,
+  longitude: 0,
+}
 
-export default function PostComplaintPage() {
+const UPDATABLE_LOCATION_FIELDS = ["city", "pincode", "address_line_2"] as const
+
+export default function CitizenPostPage() {
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [uploadingEvidence, setUploadingEvidence] = useState(false);
-  const [draftComplaintId, setDraftComplaintId] = useState<number | null>(null);
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [aiSuggestions, setAiSuggestions] = useState<{
-    confidence?: number;
-    jurisdiction_name?: string;
-    department_name?: string;
-    title?: string;
-    description?: string;
-    department_id?: number;
-    address_line_2?: string;
-    city?: string;
-    pincode?: string;
-  } | null>(null);
+  const [departments, setDepartments] = useState<Department[]>([])
+  const [loading, setLoading] = useState(false)
+  const [file, setFile] = useState<File | null>(null)
+  const [form, setForm] = useState<ComplaintCreatePayload>(INITIAL_FORM_STATE)
 
-  const [form, setForm] = useState<ComplaintCreatePayload>({
-    title: "",
-    description: "",
-    department: 0,
-    address_line_1: "",
-    address_line_2: "",
-    landmark: "",
-    city: "",
-    pincode: "",
-  });
-
-  const [files, setFiles] = useState<Array<{ file: File; media_type: MediaType }>>([]);
-
-  // Load departments on mount
   useEffect(() => {
-    let mounted = true;
-    REQUEST("GET", "admins/departments/")
-      .then((res: Department[]) => mounted && setDepartments(res || []))
-      .catch((err) => console.error("Failed to load departments", err));
-    return () => {
-      mounted = false;
-    };
-  }, []);
+    fetchDepartments()
+  }, [])
 
-  function triggerFileSelect() {
-    fileInputRef.current?.click();
-  }
-
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    if (!e.target.files) return;
-    const uploaded = Array.from(e.target.files).slice(0, 1).map((f) => ({
-      file: f,
-      media_type: "image" as MediaType,
-    }));
-    setFiles(uploaded);
-  }
-
-  function removeFile(index = 0) {
-    setFiles((prev) => prev.filter((_, i) => i !== index));
-    // If you remove file after draft creation, you might want to clear draft - optional
-  }
-
-  async function uploadEvidenceAndAnalyze() {
-    if (files.length === 0) {
-      alert("Please select a photo first");
-      return;
-    }
-    if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser");
-      return;
-    }
-
-    setUploadingEvidence(true);
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const latitude = position.coords.latitude;
-          const longitude = position.coords.longitude;
-
-          const firstImage = files[0];
-          const fd = new FormData();
-          fd.append("file", firstImage.file);
-          fd.append("media_type", firstImage.media_type);
-          fd.append("latitude", String(latitude));
-          fd.append("longitude", String(longitude));
-
-          const response = await REQUEST("POST", "citizens/evidence/upload/", fd, { isMultipart: true, });
-
-          if (response && response.suggestions) {
-            const suggestions = response.suggestions;
-
-            setAiSuggestions({
-              confidence: suggestions.confidence,
-              jurisdiction_name: suggestions.jurisdiction_name,
-              department_name: suggestions.department_name,
-              title: suggestions.title,
-              description: suggestions.description,
-              department_id: suggestions.department_id,
-              address_line_2: suggestions.address_line_2,
-              city: suggestions.city,
-              pincode: suggestions.pincode,
-            });
-
-            setForm((prev) => ({
-              ...prev,
-              title: suggestions.title || prev.title,
-              description: suggestions.description || prev.description,
-              department: suggestions.department_id || prev.department,
-              address_line_2: suggestions.address_line_2 || prev.address_line_2,
-              city: suggestions.city || prev.city,
-              pincode: suggestions.pincode || prev.pincode,
-            }));
-
-            setDraftComplaintId(response.draft_complaint_id);
-            // gentle UX hint
-            if (response.draft_complaint_id) {
-              window.scrollTo({ top: 0, behavior: "smooth" });
-            }
-          } else {
-            alert("Uploaded but no suggestions received. You can still create a complaint manually.");
-          }
-        } catch (error: any) {
-          console.error("Evidence upload failed:", error);
-          alert("Failed to upload and analyze photo. Please try again.");
-        } finally {
-          setUploadingEvidence(false);
-        }
-      },
-      (error) => {
-        console.error("Geolocation error:", error);
-        setUploadingEvidence(false);
-        alert("Could not get location. Please ensure location services are enabled.");
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
-  }
-
-  async function submitComplaint() {
-    if (!draftComplaintId) {
-      alert("Please upload a photo first");
-      return;
-    }
-
-    setLoading(true);
+  // ==================== DATA FETCHING ====================
+  
+  const fetchDepartments = async () => {
     try {
-      const payload = {
-        title: form.title,
-        description: form.description,
-        department: form.department,
-        address_line_1: form.address_line_1,
-        address_line_2: form.address_line_2,
-        city: form.city,
-        pincode: form.pincode,
-        draft_complaint_id: draftComplaintId,
-      };
-
-      await REQUEST("POST", "citizens/complaints/", payload);
-      router.push("/citizen/complaints");
-    } catch (error) {
-      console.error("Complaint submission failed:", error);
-      alert("Failed to submit complaint. Please try again.");
-    } finally {
-      setLoading(false);
+      const res = await REQUEST("GET", "admins/departments/")
+      setDepartments(res || [])
+    } catch (err) {
+      console.error("Failed to fetch departments:", err)
     }
   }
+
+  // ==================== FORM HANDLERS ====================
+  
+  const updateForm = (updates: Partial<ComplaintCreatePayload>) => {
+    setForm(prev => ({ ...prev, ...updates }))
+  }
+
+  const handleChange = (
+    key: keyof ComplaintCreatePayload,
+    value: string | number
+  ) => {
+    updateForm({ [key]: value })
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFile(e.target.files?.[0] || null)
+  }
+
+  // ==================== GEOLOCATION ====================
+  
+  const getCurrentCoordinates = (): Promise<{ lat: number; lng: number }> => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        return reject(new Error("Geolocation not supported"))
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        pos => resolve({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        }),
+        err => reject(err)
+      )
+    })
+  }
+
+  const handleRefineLocation = async () => {
+    setLoading(true)
+    try {
+      const { lat, lng } = await getCurrentCoordinates()
+      
+      const location = await REQUEST("POST", "citizens/ai/resolve_location/", {
+        latitude: lat,
+        longitude: lng,
+      })
+
+      const updates: Partial<ComplaintCreatePayload> = {
+        latitude: lat,
+        longitude: lng,
+      }
+
+      UPDATABLE_LOCATION_FIELDS.forEach(key => {
+        if (location[key]) {
+          updates[key] = location[key]
+        }
+      })
+
+      updateForm(updates)
+    } catch (err) {
+      console.error("Location refinement failed:", err)
+      alert("Failed to refine location. Please try again.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ==================== AI DESCRIPTION ====================
+  
+  const handleRefineDescription = async () => {
+    if (!file) {
+      alert("Please upload an image first")
+      return
+    }
+
+    setLoading(true)
+    try {
+      const fd = new FormData()
+      fd.append("file", file)
+
+      const ai = await REQUEST("POST", "citizens/ai/caption_image/", fd, {
+        isMultipart: true,
+      })
+
+      updateForm({
+        description: ai.caption,
+        department: ai.suggested_department.id,
+      })
+    } catch (err) {
+      console.error("AI refinement failed:", err)
+      alert("Failed to generate AI description. Please try again.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ==================== SUBMISSION ====================
+  
+  const getMediaType = (file: File): string => {
+    if (file.type.startsWith("image")) return "image"
+    if (file.type.startsWith("video")) return "video"
+    if (file.type.startsWith("audio")) return "audio"
+    return "document"
+  }
+
+  const ensureCoordinates = async (): Promise<{ latitude: number; longitude: number }> => {
+    if (form.latitude && form.longitude) {
+      return { latitude: form.latitude, longitude: form.longitude }
+    }
+
+    const coords = await getCurrentCoordinates()
+    return { latitude: coords.lat, longitude: coords.lng }
+  }
+
+  const uploadEvidence = async (complaintId: number, file: File) => {
+    const fd = new FormData()
+    fd.append("file", file)
+    fd.append("media_type", getMediaType(file))
+
+    await REQUEST(
+      "POST",
+      `citizens/upload_evidence/${complaintId}/`,
+      fd,
+      { isMultipart: true }
+    )
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!file) {
+      alert("Evidence file is required")
+      return
+    }
+
+    setLoading(true)
+    try {
+      const coordinates = await ensureCoordinates()
+
+      const complaint = await REQUEST("POST", "citizens/complaints/", {
+        ...form,
+        ...coordinates,
+      })
+
+      await uploadEvidence(complaint.id, file)
+
+      alert("Complaint submitted successfully!")
+      router.push("/citizen/dashboard");
+      // Reset form
+      setForm(INITIAL_FORM_STATE)
+      setFile(null)
+    } catch (err) {
+      console.error("Submission failed:", err)
+      alert("Failed to submit complaint. Please try again.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ==================== RENDER ====================
+  
+  const isImageFile = file?.type.startsWith("image")
 
   return (
-    <div className="min-h-screen relative bg-[#0a0a1a] py-12 px-4">
-      <div className="pointer-events-none fixed inset-0 z-0">
-        <LightRays
-          raysOrigin="top-center"
-          raysColor="#6600ff"
-          raysSpeed={1}
-          rayLength={3.0}
-          pulsating={false}
-          fadeDistance={1.0}
-          saturation={1.0}
-          mouseInfluence={0.3}
-          noiseAmount={0.0}
-          distortion={0.0}
+    <div className="max-w-2xl mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-6">Create a Complaint</h1>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Basic Information */}
+        <FormField
+          label="Title"
+          value={form.title}
+          onChange={v => handleChange("title", v)}
+          required
         />
-      </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        {/* Form Card */}
-        <ElectricBorder color="#4169E1" speed={0.8} chaos={0.02} borderRadius={24} className="" style={{}}>
-          <GlassCard variant="transparent">
-            <div className="max-h-[80vh] overflow-y-auto pr-2">
-              <div className="flex items-center gap-4 mb-3">
-                <MapPin className="w-6 h-6 text-white" />
-                <h2 className="text-2xl font-semibold text-white">Review Details</h2>
-              </div>
+        <FormField
+          label="Description"
+          value={form.description}
+          onChange={v => handleChange("description", v)}
+          required
+          textarea
+        />
 
-              <div className="space-y-4">
-                <AnimatedInput
-                  label="Complaint Title"
-                  value={form.title}
-                  onChange={(v: string) => setForm({ ...form, title: v })}
-                  placeholder="Enter complaint title"
-                  draftComplaintId={draftComplaintId}
-                  fieldKey="title"
-                />
+        {/* Address Fields */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            label="Address Line 1"
+            value={form.address_line_1}
+            onChange={v => handleChange("address_line_1", v)}
+          />
 
-                <AnimatedInput
-                  label="Description"
-                  type="textarea"
-                  value={form.description}
-                  onChange={(v: string) => setForm({ ...form, description: v })}
-                  placeholder="Explain the issue in detail..."
-                  draftComplaintId={draftComplaintId}
-                  fieldKey="description"
-                />
+          <FormField
+            label="Address Line 2"
+            value={form.address_line_2}
+            onChange={v => handleChange("address_line_2", v)}
+          />
+        </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <AnimatedInput
-                    label="Address Line 1"
-                    placeholder="House/Building No."
-                    value={form.address_line_1}
-                    onChange={(v: string) => setForm({ ...form, address_line_1: v })}
-                    draftComplaintId={draftComplaintId}
-                    fieldKey="address_line_1"
-                  />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <FormField
+            label="City"
+            value={form.city}
+            onChange={v => handleChange("city", v)}
+          />
 
-                  <AnimatedInput
-                    label="Address Line 2"
-                    placeholder="Street/Area"
-                    value={form.address_line_2}
-                    onChange={(v: string) => setForm({ ...form, address_line_2: v })}
-                    draftComplaintId={draftComplaintId}
-                    fieldKey="address_line_2"
-                  />
-                </div>
+          <FormField
+            label="Pincode"
+            value={form.pincode}
+            onChange={v => handleChange("pincode", v)}
+          />
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <AnimatedInput
-                    label="City"
-                    value={form.city}
-                    onChange={(v: string) => setForm({ ...form, city: v })}
-                    placeholder="City"
-                    draftComplaintId={draftComplaintId}
-                    fieldKey="city"
-                  />
+          <div className="flex items-end">
+            <Button
+              type="button"
+              onClick={handleRefineLocation}
+              disabled={loading}
+              variant="outline"
+              className="w-full"
+            >
+              Refine Location
+            </Button>
+          </div>
+        </div>
 
-                  <AnimatedInput
-                    label="Pincode"
-                    value={form.pincode}
-                    onChange={(v: string) => setForm({ ...form, pincode: v })}
-                    placeholder="Pincode"
-                    draftComplaintId={draftComplaintId}
-                    fieldKey="pincode"
-                  />
-
-                  <div>
-                    <Label className="text-white mb-2 block">Department</Label>
-                    <Select
-                      value={form.department ? String(form.department) : ""}
-                      onValueChange={(value) => setForm({ ...form, department: Number(value) })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {departments.map((d) => (
-                          <SelectItem key={d.id} value={String(d.id)}>
-                            {d.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="pt-2">
-                  {draftComplaintId ? (
-                    <Button
-                      onClick={submitComplaint}
-                      disabled={loading || !form.department || !form.title}
-                      className="w-full"
-                    >
-                      {loading ? "Submitting..." : "Submit Complaint"}
-                    </Button>
-                  ) : (
-                    <InfoBox variant="primary">
-                      <p className="text-sm text-[#9db4ff]"> Please upload and analyze a photo first</p>
-                    </InfoBox>
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-4 mb-3">
-              <Camera className="w-6 h-6 text-white" />
-              <h2 className="text-2xl font-semibold text-white">Upload Photo</h2>
-            </div>
-            <p className="text-sm text-[#a0a0b8] mb-4">Upload a photo of the issue for AI analysis</p>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleFileChange}
-            />
-
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button onClick={triggerFileSelect} variant="secondary" className="flex-1">
-                <UploadCloud className="mr-2" /> Select Photo
-              </Button>
-
-              <Button
-                onClick={uploadEvidenceAndAnalyze}
-                disabled={files.length === 0 || uploadingEvidence}
-                className="flex-1"
-              >
-                {uploadingEvidence ? "Analyzing..." : "Upload & Analyze"}
-              </Button>
-            </div>
-
-            {files.length > 0 && (
-              <div className="mt-4 flex items-center gap-3 flex-wrap">
-                {files.map((f, i) => (
-                  <div key={i} className="flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full">
-                    <span className="text-sm text-white max-w-xs truncate">{f.file.name}</span>
-                    <button onClick={() => removeFile(i)} className="p-1 rounded hover:bg-white/5">
-                      <Trash2 className="w-4 h-4 text-white/70" />
-                    </button>
-                  </div>
+        {/* Department Selection */}
+        <div className="space-y-2">
+          <Label>Department</Label>
+          <Select
+            value={form.department.toString()}
+            onValueChange={v => handleChange("department", Number(v))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select Department" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {departments.map(dep => (
+                  <SelectItem key={dep.id} value={dep.id.toString()}>
+                    {dep.name}
+                  </SelectItem>
                 ))}
-              </div>
-            )}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
 
-            {/* AI Suggestions */}
-            {draftComplaintId && aiSuggestions && (
-              <div className="mt-6 space-y-3">
-                <InfoBox variant="primary">
-                  <p className="text-green-300 font-semibold">Photo analyzed successfully!</p>
-                </InfoBox>
+        {/* Evidence Upload */}
+        <div className="space-y-2">
+          <Label>Evidence (Image / Video / Audio / PDF)</Label>
+          <input
+            type="file"
+            accept="image/*,video/*,audio/*,.pdf"
+            onChange={handleFileChange}
+            className="w-full"
+          />
+          {isImageFile && (
+            <Button
+              type="button"
+              onClick={handleRefineDescription}
+              disabled={loading}
+              variant="outline"
+              className="mt-2"
+            >
+              Refine Description (AI)
+            </Button>
+          )}
+        </div>
 
-                <InfoBox variant="secondary">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Brain className="w-4 h-4 text-[#6b7bff]" />
-                    <span className="text-sm text-white font-medium">AI Analysis</span>
-                  </div>
-
-                  {aiSuggestions.confidence !== undefined && (
-                    <p className="text-sm text-[#d0d8ff]">Confidence: <span className="font-medium">{(aiSuggestions.confidence * 100).toFixed(0)}%</span></p>
-                  )}
-
-                  {aiSuggestions.department_name && (
-                    <p className="text-sm text-[#d0d8ff]">Department: <DecryptedText text={aiSuggestions.department_name} animateOn="hover" /></p>
-                  )}
-
-                  {aiSuggestions.jurisdiction_name && (
-                    <p className="text-sm text-[#d0d8ff]">Jurisdiction: <DecryptedText text={aiSuggestions.jurisdiction_name} animateOn="hover" /></p>
-                  )}
-                </InfoBox>
-              </div>
-            )}
-          </GlassCard>
-        </ElectricBorder>
-      </div>
+        {/* Submit Button */}
+        <Button type="submit" disabled={loading} className="w-full">
+          {loading ? "Submitting..." : "Submit Complaint"}
+        </Button>
+      </form>
     </div>
-  );
+  )
 }

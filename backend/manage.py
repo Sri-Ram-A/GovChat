@@ -3,7 +3,7 @@
 import os
 import sys
 
-### Below 3 lines added by me
+### Below 5 lines added by me
 from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE_DIR / "models" / "stt"))

@@ -155,3 +155,5 @@ User
 - Login : https://appliku.com/post/how-use-jwt-authentication-django/
 # File upload in DRF : 
 - https://www.django-rest-framework.org/api-guide/parsers/#fileuploadparser
+# Coordinates 
+https://www.geoapify.com/how-to-get-user-location-with-javascript/

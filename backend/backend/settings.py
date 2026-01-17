@@ -11,9 +11,11 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+from dotenv import load_dotenv ###
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env") ###
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
@@ -56,6 +58,8 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    "EXCEPTION_HANDLER": "backend.exceptions.custom_exception_handler"
+
 }
 ###
 
@@ -144,6 +148,13 @@ STATIC_URL = 'static/'
 MODEL_PATH = "vosk-model-small-en-in-0.4"
 CORS_ALLOW_ALL_ORIGINS = True
 
+### URL
+from .helper import get_local_ip
+IP = get_local_ip()
+STT_URL = IP + ":50051"
+TTS_URL = IP + ":50052"
+ITT_URL = IP + ":50053"
+
 ###  JWT
 from datetime import timedelta 
 SIMPLE_JWT = {
@@ -156,7 +167,6 @@ SIMPLE_JWT = {
 ### Files
 MEDIA_ROOT = BASE_DIR / "media"
 MEDIA_URL = "/media/"
-
 ### SWAGGER JWT
 SWAGGER_SETTINGS = {
     "SECURITY_DEFINITIONS": {
@@ -171,10 +181,6 @@ SWAGGER_SETTINGS = {
 # Source - https://stackoverflow.com/a
 # Posted by LondonAppDev, modified by community. See post 'Timeline' for change history
 # Retrieved 2026-01-08, License - CC BY-SA 4.0
-
 SPECTACULAR_SETTINGS = {
     'COMPONENT_SPLIT_REQUEST': True # To allow FileField in swagger UI
 }
-
-### drf-api-logger
-DRF_API_LOGGER_DATABASE = True 

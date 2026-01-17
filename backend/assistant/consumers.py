@@ -4,15 +4,18 @@ from channels.generic.websocket import WebsocketConsumer
 
 from .stt_client import STTClient
 from .tts_client import TTSClient
+from django.conf import settings
 
+STT_URL = settings.STT_URL
+TTS_URL = settings.TTS_URL
 class ChatConsumer(WebsocketConsumer):
     def connect(self):
         self.accept()
         logger.info("[WS] Connected")
         # Speech-to-Text client
-        self.stt = STTClient(url="localhost:50051",on_result=self.on_stt_result)
+        self.stt = STTClient(url=STT_URL,on_result=self.on_stt_result)
         # Text-to-Speech client
-        self.tts = TTSClient(url="localhost:50052",on_audio=self.on_tts_audio)
+        self.tts = TTSClient(url=TTS_URL,on_audio=self.on_tts_audio)
 
     def receive(self, text_data=None, bytes_data=None):
         if bytes_data:

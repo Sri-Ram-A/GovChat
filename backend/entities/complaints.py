@@ -2,6 +2,7 @@ from django.db import models
 from .citizens import CitizenProfile
 from .governance import Department
 
+
 class Complaint(models.Model):
     STATUS_CHOICES = [
         ('OPEN', 'Open'),
@@ -20,13 +21,12 @@ class Complaint(models.Model):
     landmark = models.CharField(max_length=255, blank=True)
     city = models.CharField(max_length=100,blank=True)
     pincode = models.CharField(max_length=20,blank=True)
-    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
-    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
-
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField( null=True, blank=True)
     #  Complaint content
     title = models.CharField(max_length=255)
     description = models.TextField()
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='OPEN')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='DRAFT')
     timestamp = models.DateTimeField(auto_now_add=True)
 
     # Users Interaction
@@ -59,6 +59,7 @@ class Evidence(models.Model):
     media_type = models.CharField(max_length=50, choices=MEDIA_TYPE_CHOICES)
     caption = models.CharField(max_length=255,null=True,blank=True)
     suggested_department = models.ForeignKey(Department,on_delete=models.PROTECT,related_name='evidences',null=True,blank=True)
+
     class Meta:
         db_table = 'evidences'
         verbose_name_plural = 'Evidences'

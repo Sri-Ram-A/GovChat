@@ -1,32 +1,18 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from django.utils import timezone
 from rest_framework import status
-from rest_framework.permissions import AllowAny,IsAuthenticated
+from rest_framework.permissions import AllowAny,IsAuthenticated,IsAdminUser
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.parsers import MultiPartParser, FormParser
 
 from entities.citizens import CitizenProfile
-from entities.complaints import Complaint
-from entities.governance import Department
-from entities.governance import Jurisdiction
+from entities.complaints import Complaint,Evidence
 
 import serializer.citizens as citizens_serializer
 import serializer.complaints as complaints_serializer
 import serializer.base as base_serializer
-import serializer.governance as governance_serializer
-from .itt_client import itt
-from loguru import logger
-from .helper import (
-    validate_geolocation,
-    create_draft_complaint,
-    resolve_location,
-    get_or_create_jurisdiction,
-    analyze_image,
-    get_or_create_department,
-    update_draft_complaint,
-    prepare_response_data
-)
+from . import helper
+
 
 class CitizenListAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -56,150 +42,89 @@ class CitizenLoginAPIView(APIView):
         refresh = RefreshToken.for_user(user) # type: ignore
         return Response({"access": str(refresh.access_token),"refresh": str(refresh),}, status=status.HTTP_200_OK)
 
-class CitizenComplaintView(APIView):
-    permission_classes = [IsAuthenticated]
-    # For the purpose of Swagger 
-    def get_serializer_class(self):
-        """Returns different serializer depending on HTTP method"""
-        if self.request.method == "GET":
-            return complaints_serializer.ComplaintListSerializer
-        elif self.request.method == "POST":
-            return complaints_serializer.ComplaintCreateSerializer
-        elif self.request.method == "PATCH":
-            return complaints_serializer.ComplaintUpdateSerializer
-        return None  
+class AllComplaintsView(APIView):
+    serializer_class = complaints_serializer.ComplaintListSerializer
 
     def get(self, request):
-        """Get complaints of the logged-in citizen"""
-        citizen_profile = request.user.citizen_profile
-        complaints = Complaint.objects.filter(citizen=citizen_profile)
-        serializer_class = self.get_serializer_class()
-        if serializer_class : serializer = serializer_class(complaints, many=True)
+        complaints = Complaint.objects.all()
+        serializer = self.serializer_class(complaints, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+ 
+class ImageCaptionAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+    serializer_class = complaints_serializer.ImageCaptionSerializer
 
     def post(self, request):
-        serializer_class = self.get_serializer_class()
-        if serializer_class : serializer = serializer_class(
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        file = serializer.validated_data.get("file",None)
+        caption, dept_name, confidence = helper.analyze_image(file)
+        department = helper.get_or_create_department(dept_name)
+        return Response({
+            "caption": caption,
+            "suggested_department": {
+                "id": department.id,
+                "name": department.name
+            },
+            "confidence": confidence
+        })
+
+class ResolveLocationAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = complaints_serializer.ResolveLocationSerializer
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        lat = serializer.validated_data.get("latitude")
+        lon = serializer.validated_data.get("longitude")
+
+        location = helper.resolve_location(lat, lon)
+        return Response(location)
+
+
+# class ComplaintCreateAPIView(APIView):
+#     permission_classes = [IsAuthenticated]
+#     parser_classes = [MultiPartParser, FormParser]
+#     serializer_class = complaints_serializer.ComplaintCreateSerializer
+
+
+class ComplaintCreateAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = complaints_serializer.ComplaintCreateSerializer
+
+    def post(self, request):
+        serializer = self.serializer_class(
             data=request.data,
             context={"request": request}
         )
         serializer.is_valid(raise_exception=True)
         complaint = serializer.save()
         return Response(
-            {
-                "message": "Complaint created successfully",
-                "id": complaint.id
-            },
+            {"id": complaint.id, "message": "Complaint created"},
+            status=status.HTTP_201_CREATED
+        )
+    
+class EvidenceUploadAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+    serializer_class = complaints_serializer.EvidenceUploadSerializer
+
+    def post(self, request, complaint_id):
+        serializer = self.serializer_class(
+            data=request.data,
+            context={
+                "request": request,
+                "complaint_id": complaint_id
+            }
+        )
+        serializer.is_valid(raise_exception=True)
+        evidence = serializer.save()
+
+        return Response(
+            {"id": evidence.id, "message": "Complaint created"},
             status=status.HTTP_201_CREATED
         )
 
-    def patch(self, request):
-        complaint_id = request.data.get("complaint_id")
-        if not complaint_id:
-            return Response(
-                {"error": "complaint_id is required"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        try:
-            complaint = Complaint.objects.get(
-                id=complaint_id,
-                citizen=request.user.citizen_profile,
-                status="DRAFT"
-            )
-        except Complaint.DoesNotExist:
-            return Response(
-                {"error": "Draft complaint not found"},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        serializer_class = self.get_serializer_class()
-        if serializer_class : serializer = serializer_class(
-            complaint,
-            data=request.data,
-            partial=True,
-            context={"request": request}
-        )
-        serializer.is_valid(raise_exception=True)
-        serializer.save(status="OPEN")
-        return Response(
-            {
-                "message": "Complaint submitted successfully",
-                "id": complaint.id
-            },
-            status=status.HTTP_200_OK
-        )
-
-        
-class EvidenceUploadView(APIView):
-    permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]
-    serializer_class = complaints_serializer.EvidenceSerializer
-    
-    def post(self, request):
-        # Validate request
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        file_obj = request.FILES.get("file")
-        media_type = serializer.validated_data.get("media_type")
-        latitude = request.data.get("latitude")
-        longitude = request.data.get("longitude")
-        
-        # Validate geolocation
-        if error := validate_geolocation(latitude, longitude):
-            return Response(error, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Create draft complaint
-        draft_complaint = create_draft_complaint(
-            request.user.citizen_profile, 
-            latitude, 
-            longitude
-        )
-        
-        # Resolve location
-        location_info = resolve_location(latitude, longitude)
-        
-        # Get or create jurisdiction
-        jurisdiction = get_or_create_jurisdiction(location_info)
-        
-        # AI analysis
-        caption, pred_dept, confidence = analyze_image(file_obj, media_type)
-        
-        # Get or create department
-        suggested_department = get_or_create_department(pred_dept, jurisdiction)
-        
-        # Update draft complaint
-        update_draft_complaint(
-            draft_complaint,
-            location_info,
-            caption,
-            suggested_department
-        )
-        
-        # Save evidence
-        evidence = serializer.save(
-            complaint=draft_complaint,
-            caption=caption,
-            suggested_department=suggested_department
-        )
-        
-        logger.debug("Evidence saved | id=%s | complaint=%s", evidence.id, draft_complaint.id)
-        
-        # Prepare and return response
-        response_data = prepare_response_data(
-            draft_complaint,
-            evidence,
-            location_info,
-            suggested_department,
-            confidence
-        )
-        
-        return Response(response_data, status=status.HTTP_201_CREATED)
-
-class AllComplaintsView(APIView):
-    # permission_classes = [IsAdminUser]
-    serializer_class = complaints_serializer.ComplaintListSerializer
-    def get(self, request):
-        complaints = Complaint.objects.all()
-        serializer = self.serializer_class(complaints, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)

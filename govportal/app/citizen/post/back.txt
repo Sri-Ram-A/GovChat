@@ -1,23 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, MapPin, Camera, Brain } from "lucide-react";
-
-import FormField from "@/components/reusables/FormField";
-import FormSection from "@/components/reusables/FormSection";
+import { Camera, MapPin, Brain, UploadCloud, Trash2 } from "lucide-react";
 import { REQUEST } from "@/services/api";
 import type { MediaType, ComplaintCreatePayload, Department } from "@/types";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select";
+
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
+import LightRays from "@/components/LightRays";
+import ElectricBorder from "@/components/ElectricBorder";
+import GlassCard from "@/components/GlassCard";
+import InfoBox from "@/components/InfoBox";
+import DecryptedText from "@/components/DecryptedText";
+import AnimatedInput from "@/components/reusables/decrpyText";
 
 export default function PostComplaintPage() {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploadingEvidence, setUploadingEvidence] = useState(false);
   const [draftComplaintId, setDraftComplaintId] = useState<number | null>(null);
@@ -26,8 +27,14 @@ export default function PostComplaintPage() {
     confidence?: number;
     jurisdiction_name?: string;
     department_name?: string;
+    title?: string;
+    description?: string;
+    department_id?: number;
+    address_line_2?: string;
+    city?: string;
+    pincode?: string;
   } | null>(null);
-  
+
   const [form, setForm] = useState<ComplaintCreatePayload>({
     title: "",
     description: "",
@@ -41,121 +48,111 @@ export default function PostComplaintPage() {
 
   const [files, setFiles] = useState<Array<{ file: File; media_type: MediaType }>>([]);
 
-  /* ---------------- Fetch Departments ---------------- */
+  // Load departments on mount
   useEffect(() => {
+    let mounted = true;
     REQUEST("GET", "admins/departments/")
-      .then(setDepartments)
-      .catch(console.error);
+      .then((res: Department[]) => mounted && setDepartments(res || []))
+      .catch((err) => console.error("Failed to load departments", err));
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  /* ---------------- Get User Location ----------------*/
-  function getUserLocation(): Promise<{ latitude: number; longitude: number }> {
-    return new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject(new Error("Geolocation not supported"));
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          resolve({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          });
-        },
-        (error) => {
-          reject(error);
-        }
-      );
-    });
+  function triggerFileSelect() {
+    fileInputRef.current?.click();
   }
 
-
-/* ---------------- Upload Evidence & Get AI Suggestions ---------------- */
-async function uploadEvidenceAndAnalyze() {
-  if (files.length === 0) {
-    alert("Please select a photo first");
-    return;
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!e.target.files) return;
+    const uploaded = Array.from(e.target.files).slice(0, 1).map((f) => ({
+      file: f,
+      media_type: "image" as MediaType,
+    }));
+    setFiles(uploaded);
   }
 
-  // Check if geolocation is supported
-  if (!navigator.geolocation) {
-    alert("Geolocation is not supported by your browser");
-    return;
+  function removeFile(index = 0) {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+    // If you remove file after draft creation, you might want to clear draft - optional
   }
 
-  setUploadingEvidence(true);
-
-  // Get user location using geolocation API
-  navigator.geolocation.getCurrentPosition(
-    async (position) => {
-      try {
-        const latitude = position.coords.latitude;
-        const longitude = position.coords.longitude;
-
-        console.log("User location:", latitude, longitude);
-
-        // Upload first image with location
-        const firstImage = files[0];
-        const fd = new FormData();
-        fd.append("file", firstImage.file);
-        fd.append("media_type", firstImage.media_type);
-        fd.append("latitude", String(latitude));
-        fd.append("longitude", String(longitude));
-
-        const response = await REQUEST("POST", "citizens/evidence/upload/", fd, {
-          isMultipart: true,
-        });
-
-        console.log("Response:", response);
-
-        // Extract AI suggestions from response
-        if (response && response.suggestions) {
-          const suggestions = response.suggestions;
-
-          // Store AI metadata
-          setAiSuggestions({
-            confidence: suggestions.confidence,
-            jurisdiction_name: suggestions.jurisdiction_name,
-            department_name: suggestions.department_name,
-          });
-
-          // Auto-fill form with AI suggestions 
-          setForm({
-            title: suggestions.title || "",
-            description: suggestions.description || "",
-            department: suggestions.department_id || 0,
-            address_line_1: "", 
-            address_line_2: suggestions.address_line_2 || "", 
-            city: suggestions.city || "",
-            pincode: suggestions.pincode || "",
-          });
-
-          // Store draft complaint ID
-          setDraftComplaintId(response.draft_complaint_id);
-
-          alert("Photo analyzed! Please review the auto-filled details below.");
-        }
-      } catch (error: any) {
-        console.error("Evidence upload failed:", error);
-        alert("Failed to upload and analyze photo. Please try again.");
-      } finally {
-        setUploadingEvidence(false);
-      }
-    },
-    (error) => {
-      // Geolocation error handler
-      console.error("Geolocation error:", error);
-      setUploadingEvidence(false);
-    },
-    {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0
+  async function uploadEvidenceAndAnalyze() {
+    if (files.length === 0) {
+      alert("Please select a photo first");
+      return;
     }
-  );
-}
-  /* ---------------- Submit Final Complaint ---------------- */
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+
+    setUploadingEvidence(true);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const latitude = position.coords.latitude;
+          const longitude = position.coords.longitude;
+
+          const firstImage = files[0];
+          const fd = new FormData();
+          fd.append("file", firstImage.file);
+          fd.append("media_type", firstImage.media_type);
+          fd.append("latitude", String(latitude));
+          fd.append("longitude", String(longitude));
+
+          const response = await REQUEST("POST", "citizens/evidence/upload/", fd, { isMultipart: true, });
+
+          if (response && response.suggestions) {
+            const suggestions = response.suggestions;
+
+            setAiSuggestions({
+              confidence: suggestions.confidence,
+              jurisdiction_name: suggestions.jurisdiction_name,
+              department_name: suggestions.department_name,
+              title: suggestions.title,
+              description: suggestions.description,
+              department_id: suggestions.department_id,
+              address_line_2: suggestions.address_line_2,
+              city: suggestions.city,
+              pincode: suggestions.pincode,
+            });
+
+            setForm((prev) => ({
+              ...prev,
+              title: suggestions.title || prev.title,
+              description: suggestions.description || prev.description,
+              department: suggestions.department_id || prev.department,
+              address_line_2: suggestions.address_line_2 || prev.address_line_2,
+              city: suggestions.city || prev.city,
+              pincode: suggestions.pincode || prev.pincode,
+            }));
+
+            setDraftComplaintId(response.draft_complaint_id);
+            // gentle UX hint
+            if (response.draft_complaint_id) {
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }
+          } else {
+            alert("Uploaded but no suggestions received. You can still create a complaint manually.");
+          }
+        } catch (error: any) {
+          console.error("Evidence upload failed:", error);
+          alert("Failed to upload and analyze photo. Please try again.");
+        } finally {
+          setUploadingEvidence(false);
+        }
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+        setUploadingEvidence(false);
+        alert("Could not get location. Please ensure location services are enabled.");
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  }
+
   async function submitComplaint() {
     if (!draftComplaintId) {
       alert("Please upload a photo first");
@@ -186,227 +183,199 @@ async function uploadEvidenceAndAnalyze() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10 min-h-full">
-      <div
-        className={cn(
-          "absolute inset-0 -z-10",
-          "[background-size:20px_20px]",
-          "[background-image:radial-gradient(#d4d4d4_1px,transparent_2px)]",
-          "dark:[background-image:radial-gradient(#404040_1px,transparent_2px)]"
-        )}
-      />
+    <div className="min-h-screen relative bg-[#0a0a1a] py-12 px-4">
+      <div className="pointer-events-none fixed inset-0 z-0">
+        <LightRays
+          raysOrigin="top-center"
+          raysColor="#6600ff"
+          raysSpeed={1}
+          rayLength={3.0}
+          pulsating={false}
+          fadeDistance={1.0}
+          saturation={1.0}
+          mouseInfluence={0.3}
+          noiseAmount={0.0}
+          distortion={0.0}
+        />
+      </div>
 
-      <div className="absolute inset-0 bg-white [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-black -z-10" />
+      <div className="relative z-10 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        {/* Form Card */}
+        <ElectricBorder color="#4169E1" speed={0.8} chaos={0.02} borderRadius={24} className="" style={{}}>
+          <GlassCard variant="transparent">
+            <div className="max-h-[80vh] overflow-y-auto pr-2">
+              <div className="flex items-center gap-4 mb-3">
+                <MapPin className="w-6 h-6 text-white" />
+                <h2 className="text-2xl font-semibold text-white">Review Details</h2>
+              </div>
 
-      <Card className="shadow-lg relative z-10">
-        <CardHeader className="mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary text-sm text-muted-foreground mb-4">
-            <FileText className="h-4 w-4" />
-            <span>New Complaint</span>
-          </div>
-          <h1 className="font-serif text-4xl md:text-5xl font-medium tracking-tight text-foreground mb-2 text-balance">
-            Register a Complaint
-          </h1>
-          <p className="text-lg text-foreground max-w-2xl leading-relaxed">
-            Upload a photo of the issue for AI-powered analysis and auto-fill. Review and submit your complaint.
-          </p>
-        </CardHeader>
-        
-        <CardContent className="space-y-8">
-          {/* Evidence Upload - STEP 1 */}
-          <FormSection title="Step 1: Upload Photo for Analysis" icon={<Camera />}>
-            <div className="space-y-4">
-              <input
-                type="file"
-                accept="image/*"
-                className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
-                onChange={(e) => {
-                  if (!e.target.files) return;
-                  const uploaded = Array.from(e.target.files).map((f) => ({
-                    file: f,
-                    media_type: "image" as MediaType,
-                  }));
-                  setFiles(uploaded);
-                }}
-              />
+              <div className="space-y-4">
+                <AnimatedInput
+                  label="Complaint Title"
+                  value={form.title}
+                  onChange={(v: string) => setForm({ ...form, title: v })}
+                  placeholder="Enter complaint title"
+                  draftComplaintId={draftComplaintId}
+                  fieldKey="title"
+                />
 
-              {files.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {files.map((f, i) => (
-                    <Badge key={i} variant="secondary">
-                      {f.media_type} • {f.file.name}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-
-              {/* ALWAYS SHOW THIS BUTTON when files are selected and not yet uploaded */}
-              {files.length > 0 && !draftComplaintId && (
-                <Button
-                  className="w-full text-base"
-                  onClick={uploadEvidenceAndAnalyze}
-                  disabled={uploadingEvidence}
-                >
-                  {uploadingEvidence ? "Analyzing..." : "Upload & Analyze Photo"}
-                </Button>
-              )}
-
-              {/* Success indicator with AI insights */}
-              {draftComplaintId && aiSuggestions && (
-                <div className="space-y-3">
-                  <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                    <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-2">
-                      ✓ Photo analyzed successfully!
-                    </p>
-                  </div>
-                  
-                  {/* AI Insights Card */}
-                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Brain className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                      <span className="text-sm font-semibold text-blue-900 dark:text-blue-100">
-                        AI Analysis Results
-                      </span>
-                    </div>
-                    
-                    <div className="space-y-2 text-sm">
-                      {aiSuggestions.confidence !== undefined && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-blue-700 dark:text-blue-300">Confidence Score:</span>
-                          <Badge 
-                            variant={aiSuggestions.confidence >= 0.7 ? "default" : "secondary"}
-                            className="font-mono"
-                          >
-                            {(aiSuggestions.confidence * 100).toFixed(0)}%
-                          </Badge>
-                        </div>
-                      )}
-                      
-                      {aiSuggestions.department_name && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-blue-700 dark:text-blue-300">Suggested Department:</span>
-                          <span className="font-medium text-blue-900 dark:text-blue-100">
-                            {aiSuggestions.department_name}
-                          </span>
-                        </div>
-                      )}
-                      
-                      {aiSuggestions.jurisdiction_name && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-blue-700 dark:text-blue-300">Jurisdiction:</span>
-                          <span className="font-medium text-blue-900 dark:text-blue-100">
-                            {aiSuggestions.jurisdiction_name}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </FormSection>
-
-          {/* Complaint Information - STEP 2 */}
-          <FormSection title="Step 2: Review & Edit Details" icon={<FileText />}>
-            <div className="space-y-4">
-              <FormField
-                label="Complaint Title"
-                value={form.title}
-                onChange={(v) => setForm({ ...form, title: v })}
-                required
-              />
-              <div className="space-y-2">
-                <Label>Description</Label>
-                <Textarea
-                  placeholder="Explain the issue in detail..."
-                  className="min-h-[100px]"
+                <AnimatedInput
+                  label="Description"
+                  type="textarea"
                   value={form.description}
-                  onChange={(e) =>
-                    setForm({ ...form, description: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-          </FormSection>
-
-          {/* Location Details */}
-          <FormSection title="Location Details" icon={<MapPin />}>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  label="Address Line 1 (House/Building No.)"
-                  placeholder="e.g., Flat 302, Building A"
-                  value={form.address_line_1}
-                  onChange={(v) => setForm({ ...form, address_line_1: v })}
-                />
-                
-                <FormField
-                  label="Address Line 2 (Street/Area)"
-                  placeholder="Auto-filled from AI"
-                  value={form.address_line_2}
-                  onChange={(v) => setForm({ ...form, address_line_2: v })}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <FormField
-                  label="City"
-                  value={form.city}
-                  onChange={(v) => setForm({ ...form, city: v })}
+                  onChange={(v: string) => setForm({ ...form, description: v })}
+                  placeholder="Explain the issue in detail..."
+                  draftComplaintId={draftComplaintId}
+                  fieldKey="description"
                 />
 
-                <FormField
-                  label="Pincode"
-                  value={form.pincode}
-                  onChange={(v) => setForm({ ...form, pincode: v })}
-                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <AnimatedInput
+                    label="Address Line 1"
+                    placeholder="House/Building No."
+                    value={form.address_line_1}
+                    onChange={(v: string) => setForm({ ...form, address_line_1: v })}
+                    draftComplaintId={draftComplaintId}
+                    fieldKey="address_line_1"
+                  />
 
-                <div className="space-y-2">
-                  <Label>Department</Label>
-                  <Select
-                    value={form.department ? String(form.department) : ""}
-                    onValueChange={(value) =>
-                      setForm({ ...form, department: Number(value) })
-                    }
-                  >
-                    <SelectTrigger className="w-full h-11">
-                      <SelectValue placeholder="Select department" />
-                    </SelectTrigger>
+                  <AnimatedInput
+                    label="Address Line 2"
+                    placeholder="Street/Area"
+                    value={form.address_line_2}
+                    onChange={(v: string) => setForm({ ...form, address_line_2: v })}
+                    draftComplaintId={draftComplaintId}
+                    fieldKey="address_line_2"
+                  />
+                </div>
 
-                    <SelectContent>
-                      {departments.map((d) => (
-                        <SelectItem key={d.id} value={String(d.id)}>
-                          {d.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <AnimatedInput
+                    label="City"
+                    value={form.city}
+                    onChange={(v: string) => setForm({ ...form, city: v })}
+                    placeholder="City"
+                    draftComplaintId={draftComplaintId}
+                    fieldKey="city"
+                  />
+
+                  <AnimatedInput
+                    label="Pincode"
+                    value={form.pincode}
+                    onChange={(v: string) => setForm({ ...form, pincode: v })}
+                    placeholder="Pincode"
+                    draftComplaintId={draftComplaintId}
+                    fieldKey="pincode"
+                  />
+
+                  <div>
+                    <Label className="text-white mb-2 block">Department</Label>
+                    <Select
+                      value={form.department ? String(form.department) : ""}
+                      onValueChange={(value) => setForm({ ...form, department: Number(value) })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {departments.map((d) => (
+                          <SelectItem key={d.id} value={String(d.id)}>
+                            {d.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  {draftComplaintId ? (
+                    <Button
+                      onClick={submitComplaint}
+                      disabled={loading || !form.department || !form.title}
+                      className="w-full"
+                    >
+                      {loading ? "Submitting..." : "Submit Complaint"}
+                    </Button>
+                  ) : (
+                    <InfoBox variant="primary">
+                      <p className="text-sm text-[#9db4ff]"> Please upload and analyze a photo first</p>
+                    </InfoBox>
+                  )}
                 </div>
               </div>
             </div>
-          </FormSection>
-
-          {/* Submit Button - STEP 3 */}
-          {draftComplaintId && (
-            <Button
-              className="w-full text-base h-12"
-              onClick={submitComplaint}
-              disabled={loading || !form.department || !form.title}
-            >
-              {loading ? "Submitting..." : "Submit Complaint"}
-            </Button>
-          )}
-
-          {/* Info message if no draft yet */}
-          {!draftComplaintId && (
-            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <p className="text-sm text-blue-800 dark:text-blue-200">
-                ℹ️ Please upload and analyze a photo first to continue.
-              </p>
+            <div className="flex items-center gap-4 mb-3">
+              <Camera className="w-6 h-6 text-white" />
+              <h2 className="text-2xl font-semibold text-white">Upload Photo</h2>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <p className="text-sm text-[#a0a0b8] mb-4">Upload a photo of the issue for AI analysis</p>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button onClick={triggerFileSelect} variant="secondary" className="flex-1">
+                <UploadCloud className="mr-2" /> Select Photo
+              </Button>
+
+              <Button
+                onClick={uploadEvidenceAndAnalyze}
+                disabled={files.length === 0 || uploadingEvidence}
+                className="flex-1"
+              >
+                {uploadingEvidence ? "Analyzing..." : "Upload & Analyze"}
+              </Button>
+            </div>
+
+            {files.length > 0 && (
+              <div className="mt-4 flex items-center gap-3 flex-wrap">
+                {files.map((f, i) => (
+                  <div key={i} className="flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full">
+                    <span className="text-sm text-white max-w-xs truncate">{f.file.name}</span>
+                    <button onClick={() => removeFile(i)} className="p-1 rounded hover:bg-white/5">
+                      <Trash2 className="w-4 h-4 text-white/70" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* AI Suggestions */}
+            {draftComplaintId && aiSuggestions && (
+              <div className="mt-6 space-y-3">
+                <InfoBox variant="primary">
+                  <p className="text-green-300 font-semibold">Photo analyzed successfully!</p>
+                </InfoBox>
+
+                <InfoBox variant="secondary">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Brain className="w-4 h-4 text-[#6b7bff]" />
+                    <span className="text-sm text-white font-medium">AI Analysis</span>
+                  </div>
+
+                  {aiSuggestions.confidence !== undefined && (
+                    <p className="text-sm text-[#d0d8ff]">Confidence: <span className="font-medium">{(aiSuggestions.confidence * 100).toFixed(0)}%</span></p>
+                  )}
+
+                  {aiSuggestions.department_name && (
+                    <p className="text-sm text-[#d0d8ff]">Department: <DecryptedText text={aiSuggestions.department_name} animateOn="hover" /></p>
+                  )}
+
+                  {aiSuggestions.jurisdiction_name && (
+                    <p className="text-sm text-[#d0d8ff]">Jurisdiction: <DecryptedText text={aiSuggestions.jurisdiction_name} animateOn="hover" /></p>
+                  )}
+                </InfoBox>
+              </div>
+            )}
+          </GlassCard>
+        </ElectricBorder>
+      </div>
     </div>
   );
 }

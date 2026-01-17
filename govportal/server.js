@@ -15,6 +15,25 @@ const httpsOptions = {
   key: fs.readFileSync(path.join(__dirname, '../localhost+3-key.pem')),
   cert: fs.readFileSync(path.join(__dirname, '../localhost+3.pem'))
 }
+const os = require("os");
+
+function getLocalIPv4() {
+  const interfaces = os.networkInterfaces();
+
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (
+        iface.family === "IPv4" &&
+        !iface.internal
+      ) {
+        return iface.address;
+      }
+    }
+  }
+
+  return "localhost";
+}
+
 
 app.prepare().then(() => {
   createServer(httpsOptions, async (req, res) => {
@@ -32,7 +51,10 @@ app.prepare().then(() => {
       process.exit(1)
     })
     .listen(port, () => {
-      console.log(`> Ready on https://${hostname}:${port}`)
-      console.log(`> To test on a device, visit https://localhost:${port} or https://<your computer's local IP address>:${port}`)
-    })
+      const localIP = getLocalIPv4();
+      console.log(`> Ready on https://${hostname}:${port}`);
+      console.log(`> Local:   https://localhost:${port}`);
+      console.log(`> Network: https://${localIP}:${port}`);
+    });
+
 })
