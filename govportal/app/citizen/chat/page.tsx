@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Mic, MicOff, Send, Moon, Sun, Wifi, WifiOff } from "lucide-react"
 import { useWebSocket } from "@/hooks/useWebSocket"
 import { useAudioRecorder } from "@/hooks/useAudioRecorder"
-import EmptyState from "@/components/reusables/EmptyState"
+import EmptyState from "@/components/reusables/forms/EmptyState"
 import { cn } from "@/lib/utils"
 
 const WS_URL = "ws://localhost:8000/chat/"

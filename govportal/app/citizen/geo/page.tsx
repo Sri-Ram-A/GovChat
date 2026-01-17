@@ -3,11 +3,11 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { REQUEST } from "@/services/api";
-import LightRays from '@/components/LightRays';
+import LightRays from '@/components/background/LightRays';
 import ElectricBorder from '@/components/ElectricBorder';
-import GlassCard from '@/components/GlassCard';
-import Badge from '@/components/Badge';
-import InfoBox from '@/components/InfoBox';
+import GlassCard from '@/components/background/GlassCard';
+import Badge from '@/components/background/Badge';
+import InfoBox from '@/components/background/InfoBox';
 import LaserFlow from '@/components/LaserFlow';
 
 interface LocationData {

@@ -79,10 +79,11 @@ class ComplaintListSerializer(serializers.ModelSerializer):
         model = complaints_entity.Complaint
         fields = "__all__"
 
+    
 class ComplaintAdminReadSerializer(serializers.ModelSerializer):
     citizen = serializers.StringRelatedField()
     department = serializers.StringRelatedField()
-
+    evidences = EvidenceSerializer(many=True)
     class Meta:
         model = complaints_entity.Complaint
         fields = "__all__"

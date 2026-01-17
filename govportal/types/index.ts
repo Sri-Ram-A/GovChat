@@ -29,7 +29,7 @@ export interface Evidence {
   caption: string;
 }
 
-export type ComplaintStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
+export type ComplaintStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED" | "DRAFT";
 
 export interface Complaint {
   id: number;
@@ -41,7 +41,7 @@ export interface Complaint {
   timestamp: string; // ISO
   likes_count: number;
   evidences?: Evidence[];
-  citizen_username?: string;
+  citizen?: string;
   address_line_1?: string;
   address_line_2?: string;
   landmark?: string;

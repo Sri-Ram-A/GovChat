@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 import { CalendarIcon, Loader2, UserPlus, Lock, Phone, MapPin, User, Shield, ArrowRight, Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, } from "@/components/ui/card";
-import FormField from "@/components/reusables/FormField";
-import FormSection from "@/components/reusables/FormSection";
+import FormField from "@/components/reusables/forms/FormField";
+import FormSection from "@/components/reusables/forms/FormSection";
 import {
   Command,
   CommandEmpty,

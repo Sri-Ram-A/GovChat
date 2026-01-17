@@ -1,6 +1,6 @@
 "use client"
 import React, { useEffect, useState } from "react"
-import FormField from "@/components/reusables/FormField"
+import FormField from "@/components/reusables/forms/FormField"
 import {
   Select,
   SelectContent,

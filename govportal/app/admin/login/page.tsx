@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import FormField from "@/components/reusables/FormField";
+import FormField from "@/components/reusables/forms/FormField";
 import { toast } from "sonner";
 import { REQUEST } from "@/services/api";
 import { setStoredToken } from "@/services/helpers";

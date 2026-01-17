@@ -11,8 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
-import FormField from "@/components/reusables/FormField";
-import FormSection from "@/components/reusables/FormSection";
+import FormField from "@/components/reusables/forms/FormField";
+import FormSection from "@/components/reusables/forms/FormSection";
 
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
