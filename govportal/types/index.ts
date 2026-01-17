@@ -6,14 +6,14 @@ export interface RegisterForm {
   phone_number: string;
   first_name: string;
   last_name: string;
-  address: string;
-  gender: string;
-  city: string;
-  state_province: string;
-  postal_code: string;
-  date_of_birth: Date | undefined;
-  designation:string;
-  department:number;
+  gender?: string;
+  address?: string;
+  city?: string;
+  state_province?: string;
+  postal_code?: string;
+  date_of_birth?: Date | undefined;
+  designation?:string;
+  department?:number;
 }
 
 
@@ -71,6 +71,7 @@ export interface Department {
   id: number
   name: string
   description: string
+  code?:string
 }
 
 export interface User {

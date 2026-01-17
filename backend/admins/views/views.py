@@ -26,12 +26,16 @@ class AdminListAPIView(APIView):
 class AdminRegistrationAPIView(APIView):
     permission_classes = [AllowAny]
     serializer_class = admin_serializer.AdminRegistrationSerializer
+
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
-        if serializer.is_valid():
-            citizen = serializer.save()
-            return Response({"message": "Registration successful",}, status=status.HTTP_201_CREATED)
-        return Response({"message": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(
+            {"message": "Registration successful"},
+            status=status.HTTP_201_CREATED
+        )
+
 
 class AdminLoginAPIView(APIView):
     permission_classes = [AllowAny]

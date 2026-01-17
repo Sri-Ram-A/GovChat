@@ -24,13 +24,13 @@ export default function LoginPage() {
 
     try {
       // adjust route if your backend expects another path
-      const res = await REQUEST("POST", "citizens/login/", { username: form.username, password: form.password });
+      const res = await REQUEST("POST", "admins/login/", { username: form.username, password: form.password });
       // Expect token in res.access or res.token — adjust accordingly
       if (res?.access) {
         // Store the access token 
         setStoredToken(res.access);        
         toast.success("Welcome back!");
-        router.push("/citizen/home");
+        router.push("/admins/home");
       } else {
         // No token received - this should NOT happen on successful login
         console.error("Login response missing token:", res);
@@ -51,7 +51,7 @@ export default function LoginPage() {
         <CardHeader className="text-center">
           <Lock className="h-6 w-6 text-blue-600" />
           <CardTitle className="text-2xl">Welcome Back</CardTitle>
-          <CardDescription>Login to your citizen account</CardDescription>
+          <CardDescription>Login to your admin account</CardDescription>
         </CardHeader>
 
         <CardContent>

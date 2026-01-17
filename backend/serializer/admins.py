@@ -1,12 +1,17 @@
 from rest_framework import serializers
 
 from entities.admins import AdminProfile
+from entities.governance import Department
 from .governance import DepartmentSerializer
 from .base import UserAllSerializer , UserRegisterSerializer
 
 class AdminProfileSerializer(serializers.ModelSerializer):
     user = UserAllSerializer(read_only=True)
-    department = DepartmentSerializer(read_only=True)
+    department = serializers.PrimaryKeyRelatedField(
+        queryset=Department.objects.all(),
+        required=True,
+        allow_null=False
+    )
     class Meta:
         model = AdminProfile
         fields = '__all__'
@@ -15,7 +20,11 @@ class AdminRegistrationSerializer(serializers.ModelSerializer):
     '''This serializer expects a field called user, and that field is a nested object that must follow UserRegisterSerializer.'''
     
     user = UserRegisterSerializer()
-    department = DepartmentSerializer(read_only=True)
+    department = serializers.PrimaryKeyRelatedField(
+        queryset=Department.objects.all(),
+        required=True,
+        allow_null=False
+    )
     class Meta:
         model = AdminProfile
         fields = '__all__'
