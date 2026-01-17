@@ -10,30 +10,40 @@ from entities.governance import Jurisdiction
 
 import  serializer.admins as admin_serializer
 import serializer.governance as governance_serializer
-
+import serializer.base as base_serializer
 from loguru import logger
 import requests
+
 class AdminListAPIView(APIView):
-    # permission_classes = [IsAuthenticated]
     serializer_class = admin_serializer.AdminProfileSerializer
+    
     def get(self, request):
         admins = (AdminProfile.objects.select_related('user', 'department').all())
         serializer = self.serializer_class(admins, many=True)
         return Response(serializer.data)
+    
 
-class DepartmentsListAPIView(APIView):
-    # permission_classes = [IsAuthenticated]
-    serializer_class = governance_serializer.DepartmentSerializer
-    def get(self, request):
-        departments = Department.objects.all()
-        serializer = self.serializer_class(departments, many=True)
-        return Response(serializer.data)
+class AdminRegistrationAPIView(APIView):
+    permission_classes = [AllowAny]
+    serializer_class = admin_serializer.AdminRegistrationSerializer
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            citizen = serializer.save()
+            return Response({"message": "Registration successful",}, status=status.HTTP_201_CREATED)
+        return Response({"message": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+class AdminLoginAPIView(APIView):
+    permission_classes = [AllowAny]
+    serializer_class = base_serializer.UserLoginSerializer # Very helpful for drf-spectacular to infer the required inputs
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data
+        refresh = RefreshToken.for_user(user) # type: ignore
+        return Response({"access": str(refresh.access_token),"refresh": str(refresh),}, status=status.HTTP_200_OK)
+
+
 class AllJurisdictionView(APIView):
     # permission_classes = [IsAuthenticated]
     serializer_class = governance_serializer.JurisdictionSerializer
@@ -47,6 +57,7 @@ class AllJurisdictionView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 class GeoTestAPIView(APIView):
     def post(self, request):
         lat = request.data.get("latitude")

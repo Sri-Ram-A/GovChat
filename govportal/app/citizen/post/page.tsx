@@ -231,7 +231,6 @@ export default function CitizenPostPage() {
           value={form.description}
           onChange={v => handleChange("description", v)}
           required
-          textarea
         />
 
         {/* Address Fields */}

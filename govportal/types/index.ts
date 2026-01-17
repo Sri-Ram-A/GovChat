@@ -12,6 +12,8 @@ export interface RegisterForm {
   state_province: string;
   postal_code: string;
   date_of_birth: Date | undefined;
+  designation:string;
+  department:number;
 }
 
 

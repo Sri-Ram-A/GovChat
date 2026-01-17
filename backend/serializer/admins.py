@@ -15,6 +15,7 @@ class AdminRegistrationSerializer(serializers.ModelSerializer):
     '''This serializer expects a field called user, and that field is a nested object that must follow UserRegisterSerializer.'''
     
     user = UserRegisterSerializer()
+    department = DepartmentSerializer(read_only=True)
     class Meta:
         model = AdminProfile
         fields = '__all__'
