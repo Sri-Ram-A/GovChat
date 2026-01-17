@@ -157,3 +157,5 @@ User
 - https://www.django-rest-framework.org/api-guide/parsers/#fileuploadparser
 # Coordinates 
 https://www.geoapify.com/how-to-get-user-location-with-javascript/
+# Navbar
+https://nextjs.org/docs/pages/building-your-application/routing/pages-and-layouts

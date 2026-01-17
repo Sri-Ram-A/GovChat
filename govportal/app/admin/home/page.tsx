@@ -1,45 +1,51 @@
 "use client"
 
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
+import { useEffect, useState } from "react"
+import { REQUEST } from "@/services/api"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { GridPattern } from "@/components/ui/grid-pattern"
+export default function AdminDashboard() {
+  const [complaints, setComplaints] = useState<any[]>([])
 
-export default function Home() {
-  const router = useRouter()
+  useEffect(() => {
+    fetchComplaints()
+  }, [])
+
+  const fetchComplaints = async () => {
+    try {
+      const data = await REQUEST("GET", "admins/complaints/")
+      setComplaints(data)
+    } catch (err) {
+      console.error(err)
+    }
+  }
 
   return (
-    <main className="relative w-full h-screen overflow-hidden bg-white">
-      {/* Background Video */}
-      <video autoPlay loop muted playsInline
-        className="absolute inset-0 w-full h-full object-fit z-0 bottom-1">
-        <source src="/admin_intro.mp4" type="video/mp4" />
-        Your browser does not support the video tag.
-      </video>
+    <div className="bg-background relative flex h-screen w-full flex-col items-center justify-center overflow-hidden rounded-lg border">
+      <GridPattern/>
+       <h1 className="text-3xl font-bold">Department Complaints</h1>
 
-      {/* UI Layer */}
-      <div className="relative z-20 w-full h-full">
-        
-        {/* Top Right: Admin Registration */}
-        <div className="absolute top-8 right-8">
-          <Button 
-            variant="outline" 
-            className="text-black border-black/40 hover:bg-black border-2 hover:text-white transition-all"
-            onClick={() => router.push("/admin/register")}
-          >
-            Admin Registration
-          </Button>
+      <ScrollArea className="h-[70vh]">
+        <div className="space-y-4">
+          {complaints.map(c => (
+            <Card key={c.id}>
+              <CardHeader>
+                <CardTitle>{c.title}</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground">
+                <p>{c.description}</p>
+                <p className="mt-2">
+                  Status: <strong>{c.status}</strong>
+                </p>
+                <p>
+                  Location: {c.city} – {c.pincode}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-
-        {/* Left Center: Register Department */}
-        <div className="absolute top-8 left-8">
-          <Button 
-            className="bg-black text-white hover:bg-gray-200 hover:text-black font-semibold border-2 shadow-2xl"
-            onClick={() => router.push("/admin/jurisdiction")}
-          >
-            Register Department
-          </Button>
-        </div>
-
-      </div>
-    </main>
+      </ScrollArea>
+    </div>
   )
 }

@@ -30,7 +30,7 @@ export default function LoginPage() {
         // Store the access token 
         setStoredToken(res.access);        
         toast.success("Welcome back!");
-        router.push("/admins/home");
+        router.push("/admin/home");
       } else {
         // No token received - this should NOT happen on successful login
         console.error("Login response missing token:", res);
@@ -91,7 +91,7 @@ export default function LoginPage() {
 
           <p className="text-sm text-center mt-4">
             Don't have an account?{" "}
-            <Link href="/citizen/register" className="text-primary hover:underline">
+            <Link href="/admin/register" className="text-primary hover:underline">
               Register
             </Link>
           </p>

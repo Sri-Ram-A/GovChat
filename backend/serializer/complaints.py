@@ -13,6 +13,9 @@ class ResolveLocationSerializer(serializers.Serializer):
     longitude = serializers.FloatField()
 
 class ComplaintCreateSerializer(serializers.ModelSerializer):
+    department = serializers.PrimaryKeyRelatedField(
+        queryset=complaints_entity.Department.objects.all()
+    )
     class Meta:
         model = complaints_entity.Complaint
         exclude = ["citizen", "timestamp", "likes_count", "status"]
@@ -71,6 +74,14 @@ class EvidenceSerializer(serializers.ModelSerializer):
 
 class ComplaintListSerializer(serializers.ModelSerializer):
     evidences = EvidenceSerializer(many=True)
+
+    class Meta:
+        model = complaints_entity.Complaint
+        fields = "__all__"
+
+class ComplaintAdminReadSerializer(serializers.ModelSerializer):
+    citizen = serializers.StringRelatedField()
+    department = serializers.StringRelatedField()
 
     class Meta:
         model = complaints_entity.Complaint

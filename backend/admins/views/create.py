@@ -7,6 +7,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from entities.admins import AdminProfile
 from entities.governance import Department,Jurisdiction,Domain
 
+import serializer.base as base_serializer
 import  serializer.admins as admin_serializer
 import serializer.governance as governance_serializer
 from rest_framework.views import APIView
@@ -58,3 +59,36 @@ class DepartmentAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         department = serializer.save()
         return Response(self.serializer_class(department).data,status=status.HTTP_201_CREATED)
+
+class AdminListAPIView(APIView):
+    serializer_class = admin_serializer.AdminProfileSerializer
+    
+    def get(self, request):
+        admins = (AdminProfile.objects.select_related('user', 'department').all())
+        serializer = self.serializer_class(admins, many=True)
+        return Response(serializer.data)
+    
+
+class AdminRegistrationAPIView(APIView):
+    permission_classes = [AllowAny]
+    serializer_class = admin_serializer.AdminRegistrationSerializer
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(
+            {"message": "Registration successful"},
+            status=status.HTTP_201_CREATED
+        )
+
+
+class AdminLoginAPIView(APIView):
+    permission_classes = [AllowAny]
+    serializer_class = base_serializer.UserLoginSerializer # Very helpful for drf-spectacular to infer the required inputs
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data
+        refresh = RefreshToken.for_user(user) # type: ignore
+        return Response({"access": str(refresh.access_token),"refresh": str(refresh),}, status=status.HTTP_200_OK)

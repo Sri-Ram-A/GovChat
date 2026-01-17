@@ -85,16 +85,16 @@ export default function RegisterPage() {
           first_name: form.first_name,
           last_name: form.last_name,
         },
-
-
+        department: deptID,
+        designation: form.designation,
       };
 
-      const res = await REQUEST("POST", "citizens/register/", payload);
+      const res = await REQUEST("POST", "admins/register/", payload);
 
       if (res?.access) {
         setStoredToken(res.access);
         toast.success("Account created — welcome! 🎉");
-        router.push("/citizen/home");
+        router.push("/admin/home");
       } else {
         toast.success("Account created — you can now sign in.");
         router.push("/");
@@ -281,7 +281,7 @@ export default function RegisterPage() {
                   )}
                 </Button>
 
-                <Link href="/citizen/login" className="flex-1">
+                <Link href="/admin/login" className="flex-1">
                   <Button
                     type="button"
                     variant="outline"
