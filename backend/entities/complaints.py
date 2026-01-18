@@ -2,6 +2,31 @@ from django.db import models
 from .citizens import CitizenProfile
 from .governance import Department
 
+class ComplaintGroup(models.Model):
+    title = models.CharField(max_length=255)
+    department = models.ForeignKey(Department,on_delete=models.PROTECT,related_name='complaint_groups',null=True,blank=True) # nullable (temporarily) once i shld reset db.sqlite3
+
+    # Representative location (centroid)
+    centroid_latitude = models.FloatField()
+    centroid_longitude = models.FloatField()
+    radius_meters = models.PositiveIntegerField(default=3000)
+    grouped_status = models.CharField(
+        max_length=20,
+        choices=[
+            ('OPEN', 'Open'),
+            ('IN_PROGRESS', 'In Progress'),
+            ('RESOLVED', 'Resolved'),
+            ('CLOSED', 'Closed'),
+        ],
+        default='OPEN'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    class Meta:
+        db_table = "complaint_groups"
+    
+    def __str__(self):
+        return f"{self.department}-{self.grouped_status}-{self.centroid_latitude:.2f}:{self.centroid_longitude:.2f}"
 
 class Complaint(models.Model):
     STATUS_CHOICES = [
@@ -28,7 +53,13 @@ class Complaint(models.Model):
     description = models.TextField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='DRAFT')
     timestamp = models.DateTimeField(auto_now_add=True)
-
+    group = models.ForeignKey(
+        ComplaintGroup,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="complaints"
+    )
     # Users Interaction
     likes_count = models.PositiveIntegerField(default=0)
 
@@ -67,3 +98,18 @@ class Evidence(models.Model):
     def __str__(self):
         return f"{self.media_type} - {self.file.name}"
 
+class GroupTimeline(models.Model):
+    group = models.ForeignKey(ComplaintGroup,on_delete=models.CASCADE,related_name="timeline")
+
+    text = models.TextField(blank=True)
+    image = models.ImageField(upload_to="group_timeline/", null=True, blank=True)
+
+    created_by_admin = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'timeline'
+        verbose_name_plural = 'Timeline'
+    
+    def __str__(self):
+        return f"{self.group} - {self.text}"

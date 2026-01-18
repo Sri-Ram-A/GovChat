@@ -13,12 +13,10 @@ class ResolveLocationSerializer(serializers.Serializer):
     longitude = serializers.FloatField()
 
 class ComplaintCreateSerializer(serializers.ModelSerializer):
-    department = serializers.PrimaryKeyRelatedField(
-        queryset=complaints_entity.Department.objects.all()
-    )
+    department = serializers.PrimaryKeyRelatedField(queryset=complaints_entity.Department.objects.all())
     class Meta:
         model = complaints_entity.Complaint
-        exclude = ["citizen", "timestamp", "likes_count", "status"]
+        exclude = ["citizen", "timestamp", "likes_count", "status","group"]
 
     def create(self, validated_data):
         request = self.context["request"]
@@ -29,7 +27,7 @@ class ComplaintCreateSerializer(serializers.ModelSerializer):
             **validated_data
         )
 
-class EvidenceUploadSerializer(serializers.ModelSerializer):
+class EvidenceCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = complaints_entity.Evidence
         fields = ['file', 'media_type', 'caption', 'suggested_department']
@@ -65,25 +63,22 @@ class EvidenceUploadSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         return complaints_entity.Evidence.objects.create(**validated_data)
 
-class EvidenceSerializer(serializers.ModelSerializer):
+class EvidenceListSerializer(serializers.ModelSerializer):
     class Meta:
         model = complaints_entity.Evidence
         fields = ['file', 'media_type', 'caption', 'suggested_department']
         read_only_fields = ['caption', 'suggested_department']
 
-
 class ComplaintListSerializer(serializers.ModelSerializer):
-    evidences = EvidenceSerializer(many=True)
-
+    citizen = serializers.StringRelatedField()
+    department = serializers.StringRelatedField()
+    evidences = EvidenceListSerializer(many=True)
     class Meta:
         model = complaints_entity.Complaint
         fields = "__all__"
-
-    
-class ComplaintAdminReadSerializer(serializers.ModelSerializer):
-    citizen = serializers.StringRelatedField()
+class ComplaintGroupSerializer(serializers.ModelSerializer):
     department = serializers.StringRelatedField()
-    evidences = EvidenceSerializer(many=True)
+    complaints_count = serializers.IntegerField()
     class Meta:
-        model = complaints_entity.Complaint
+        model = complaints_entity.ComplaintGroup
         fields = "__all__"

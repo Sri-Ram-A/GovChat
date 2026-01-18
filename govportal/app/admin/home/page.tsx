@@ -66,8 +66,6 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-
-
 // Evidence Display Component
 function EvidenceDisplay({ ev }: { ev: Evidence }) {
   const src = ev.file?.startsWith("http") ? ev.file : `${API_URL}${ev.file?.replace(/^\/+/, "")}`;
@@ -238,7 +236,7 @@ export default function AdminDashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="container px-6 py-8 space-y-8">
+      <main className="container px-6 py-8 space-y-8 ">
 
         {/* Data Table */}
         <Card className="border shadow-sm">

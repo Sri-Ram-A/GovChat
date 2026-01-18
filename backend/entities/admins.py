@@ -13,4 +13,4 @@ class AdminProfile(models.Model):
         db_table = "admins"
 
     def __str__(self):
-        return f"Admin: {self.user.username} ({self.designation})"
+        return f"{self.user.username} ({self.designation})"

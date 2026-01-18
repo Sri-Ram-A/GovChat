@@ -64,10 +64,10 @@ class ComplaintCreateAPIView(APIView):
             status=status.HTTP_201_CREATED
         )
     
-class EvidenceUploadAPIView(APIView):
+class EvidenceCreateAPIView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
-    serializer_class = complaints_serializer.EvidenceUploadSerializer
+    serializer_class = complaints_serializer.EvidenceCreateSerializer
 
     def post(self, request, complaint_id):
         serializer = self.serializer_class(

@@ -31,7 +31,6 @@ ALLOWED_HOSTS = ['*','192.168.1.6']
 # Application definition
 
 INSTALLED_APPS = [
-    # "unfold", ###
     'assistant', ###
     'citizens', ###
     'admins', ###
@@ -48,6 +47,7 @@ INSTALLED_APPS = [
     'rest_framework',###
     'rest_framework_simplejwt',###
     'drf_spectacular',###
+   'schema_viewer',###
 ]
 ###
 REST_FRAMEWORK = {

@@ -13,7 +13,7 @@ urlpatterns = [
     path("ai/resolve_location/", complaints.ResolveLocationAPIView.as_view()),
     path("complaints/", complaints.ComplaintCreateAPIView.as_view()),
     path("upload_evidence/<int:complaint_id>/",
-         complaints.EvidenceUploadAPIView.as_view(),),
+         complaints.EvidenceCreateAPIView.as_view(),),
 
 
     path("complaints/all/", complaints.AllComplaintsView.as_view()),

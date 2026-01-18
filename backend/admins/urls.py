@@ -13,8 +13,9 @@ urlpatterns = [
     path('login/', create.AdminLoginAPIView.as_view(), name='citizen-register'),
     path('', create.AdminListAPIView.as_view(), name='admin-list'),
 
-    path("complaints/",complaints.AdminDepartmentComplaintsAPIView.as_view()),
-
+    path("complaints/",complaints.DepartmentListComplaints.as_view()),
+    path("complaint-groups/",complaints.DepartmentListComplaintGroups.as_view()),
+    path("complaint-groups/<int:group_id>/",complaints.ParticularComplaintGroup.as_view()),
 
     path('geo/', complaints.GeoTestAPIView.as_view()), 
 ]

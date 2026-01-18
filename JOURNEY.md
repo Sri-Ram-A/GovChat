@@ -159,3 +159,6 @@ User
 https://www.geoapify.com/how-to-get-user-location-with-javascript/
 # Navbar
 https://nextjs.org/docs/pages/building-your-application/routing/pages-and-layouts
+# Dango Signals
+- Undestanding : https://www.freecodecamp.org/news/how-to-use-django-signals-in-your-projects/
+- https://www.geeksforgeeks.org/python/how-to-create-and-use-signals-in-django/

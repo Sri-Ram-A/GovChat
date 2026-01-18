@@ -25,12 +25,12 @@ from rest_framework import permissions
 
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
-
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', lambda request: HttpResponse("Welcome to my API! Explore the endpoints."), name='welcome'),
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
     path('swagger/', SpectacularSwaggerView.as_view(url_name='schema')),
+    path('schema-viewer/', include('schema_viewer.urls')),
 
     path("api/citizens/", include("citizens.urls")),
     path("api/admins/", include("admins.urls")),

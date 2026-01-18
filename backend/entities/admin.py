@@ -1,5 +1,5 @@
 from .governance import Jurisdiction,Domain,Department
-from .complaints import Complaint,Evidence
+from .complaints import Complaint,Evidence,ComplaintGroup
 from .admins import AdminProfile
 from .citizens import CitizenProfile
 from django.contrib import admin
@@ -10,4 +10,5 @@ admin.site.register(Department)
 admin.site.register(AdminProfile)
 admin.site.register(CitizenProfile)
 admin.site.register(Complaint)
+admin.site.register(ComplaintGroup)
 admin.site.register(Evidence)

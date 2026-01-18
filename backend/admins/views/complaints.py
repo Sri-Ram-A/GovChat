@@ -1,25 +1,22 @@
+    
+from django.db.models import Count
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny,IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.shortcuts import get_object_or_404
 
-from entities.governance import Jurisdiction
 import entities.complaints as complaints_entity
-import serializer.governance as governance_serializer
 import serializer.complaints as complaints_serializer
 
 from loguru import logger
 import requests
 
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-
-class AdminDepartmentComplaintsAPIView(APIView):
+class DepartmentListComplaints(APIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = complaints_serializer.ComplaintAdminReadSerializer
+    serializer_class = complaints_serializer.ComplaintListSerializer
     def get(self, request):
         # When you access a ForeignKey field without _id, Django gives you:
         # the related model object
@@ -39,6 +36,44 @@ class AdminDepartmentComplaintsAPIView(APIView):
         serializer = self.serializer_class(complaints, many=True)
         return Response(serializer.data)
 
+class DepartmentListComplaintGroups(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = complaints_serializer.ComplaintGroupSerializer
+
+    def get(self, request):
+        department = request.user.admin_profile.department
+        if not department:
+            return Response(
+                {"detail": "Admin not assigned to a department"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        qs = (
+            complaints_entity.ComplaintGroup.objects
+            .filter(department=department)
+            .annotate(complaints_count=Count("complaints"))
+        )
+        serializer = self.serializer_class(qs, many=True)
+        return Response(serializer.data)
+
+class ParticularComplaintGroup(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = complaints_serializer.ComplaintListSerializer
+
+    def get(self, request, group_id):
+        department = request.user.admin_profile.department
+        group = get_object_or_404(
+            complaints_entity.ComplaintGroup,
+            id=group_id,
+            department=department
+        )
+        qs = (
+            complaints_entity.Complaint.objects
+            .filter(group=group)
+            .select_related("citizen", "department")
+            .prefetch_related("evidences")
+        )
+        serializer = self.serializer_class(qs, many=True)
+        return Response(serializer.data)
 
 class GeoTestAPIView(APIView):
     def post(self, request):

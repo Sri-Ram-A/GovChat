@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { getStoredToken, clearStoredToken } from "@/services/helpers"
 import { useRouter } from "next/navigation"
-import { Loader2, LogOut, FileText, CheckCircle, Shield } from "lucide-react"
+import { Loader2, LogOut, FileText, CheckCircle, Shield,User } from "lucide-react"
 
 
 export default function CitizenHome() {
@@ -86,8 +86,8 @@ export default function CitizenHome() {
             </Button>
             <Button asChild size="sm" className="gap-2">
               <Link href="/citizen/profile">
-                <FileText className="h-4 w-4" />
-                Profile
+                <User className="h-4 w-4" />
+                <span className="hidden sm:inline">Profile</span>
               </Link>
             </Button>
             <Button
@@ -97,7 +97,7 @@ export default function CitizenHome() {
               className="gap-2"
             >
               <LogOut className="h-4 w-4" />
-              Logout
+              <span className="hidden sm:inline">Logout</span>
             </Button>
           </div>
 
@@ -173,7 +173,7 @@ export default function CitizenHome() {
         </section>
 
         {/* ================= IMAGE SHOWCASE ================= */}
-        <section className="mb-20">
+        <section className="">
           <div className="text-center mb-10">
             <h2 className="text-3xl font-bold mb-3">Platform in Action</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
@@ -240,18 +240,7 @@ export default function CitizenHome() {
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="border-t py-8 mt-8">
-        <div className="max-w-7xl mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} Citizen Governance Portal. All rights reserved.</p>
-          <p className="mt-2">
-            Need help?{" "}
-            <Link href="/citizen/support" className="text-primary hover:underline">
-              Contact Support
-            </Link>
-          </p>
-        </div>
-      </footer>
+
     </div>
   )
 }

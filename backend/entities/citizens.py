@@ -16,4 +16,4 @@ class CitizenProfile(models.Model):
         db_table = "citizens"
 
     def __str__(self):
-        return f"Citizen: {self.user.username}"
+        return f"{self.user.username}"

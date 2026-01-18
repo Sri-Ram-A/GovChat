@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { FilePlusCorner, MessageCircle, MapPin } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 import {
@@ -116,17 +117,32 @@ export default function AllComplaintsPage() {
             Community Complaints
           </h1>
 
-          <div className="flex flex-wrap gap-2">
-            <Button asChild variant="outline">
-              <Link href="/citizen/post">New Complaint</Link>
+          <div className="flex gap-2 ">
+            <Button asChild variant="outline" className="border-white border-2">
+              <Link href="/citizen/post">
+                <FilePlusCorner  />
+                <span className="hidden sm:inline">
+                  New Complaint
+                </span>
+              </Link>
             </Button>
 
-            <Button asChild>
-              <Link href="/citizen/chat">Chat with Us</Link>
+            <Button asChild >
+              <Link href="/citizen/chat">
+                <MessageCircle  />
+                <span className="hidden sm:inline">
+                  Chat with Us
+                </span>
+              </Link>
             </Button>
 
             <Button asChild className="bg-green-300">
-              <Link href="/citizen/map">View Map</Link>
+              <Link href="/citizen/map">
+                <MapPin  />
+                <span className="hidden sm:inline">
+                  View Map
+                </span>
+              </Link>
             </Button>
           </div>
         </div>
@@ -160,7 +176,7 @@ export default function AllComplaintsPage() {
 
                 <Avatar className="h-10 w-10">
                   <AvatarFallback>
-                    {c.citizen_username?.[0]?.toUpperCase() ?? "U"}
+                    {c.citizen?.[0]?.toUpperCase() ?? "U"}
                   </AvatarFallback>
                 </Avatar>
 
@@ -182,7 +198,7 @@ export default function AllComplaintsPage() {
                   </div>
 
                   <p className="text-xs text-muted-foreground">
-                    {c.citizen_username ?? "Citizen"} •{" "}
+                    {c.citizen ?? "Citizen"} •{" "}
                     {c.city ?? "—"} •{" "}
                     {formatDistanceToNow(
                       new Date(c.timestamp),

@@ -1,19 +1,13 @@
 "use client"
 import React, { useEffect, useState } from "react"
 import FormField from "@/components/reusables/forms/FormField"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select"
 import { useRouter } from "next/navigation";
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Department, ComplaintCreatePayload } from "@/types"
 import { REQUEST } from "@/services/api"
+import { toast } from "sonner"
 
 const INITIAL_FORM_STATE: ComplaintCreatePayload = {
   title: "",
@@ -42,7 +36,7 @@ export default function CitizenPostPage() {
   }, [])
 
   // ==================== DATA FETCHING ====================
-  
+
   const fetchDepartments = async () => {
     try {
       const res = await REQUEST("GET", "admins/departments/")
@@ -53,7 +47,7 @@ export default function CitizenPostPage() {
   }
 
   // ==================== FORM HANDLERS ====================
-  
+
   const updateForm = (updates: Partial<ComplaintCreatePayload>) => {
     setForm(prev => ({ ...prev, ...updates }))
   }
@@ -70,7 +64,7 @@ export default function CitizenPostPage() {
   }
 
   // ==================== GEOLOCATION ====================
-  
+
   const getCurrentCoordinates = (): Promise<{ lat: number; lng: number }> => {
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
@@ -91,7 +85,7 @@ export default function CitizenPostPage() {
     setLoading(true)
     try {
       const { lat, lng } = await getCurrentCoordinates()
-      
+
       const location = await REQUEST("POST", "citizens/ai/resolve_location/", {
         latitude: lat,
         longitude: lng,
@@ -111,17 +105,17 @@ export default function CitizenPostPage() {
       updateForm(updates)
     } catch (err) {
       console.error("Location refinement failed:", err)
-      alert("Failed to refine location. Please try again.")
+      toast.error("Failed to refine location. Please try again.")
     } finally {
       setLoading(false)
     }
   }
 
   // ==================== AI DESCRIPTION ====================
-  
+
   const handleRefineDescription = async () => {
     if (!file) {
-      alert("Please upload an image first")
+      toast.warning("Please upload an image first")
       return
     }
 
@@ -140,14 +134,14 @@ export default function CitizenPostPage() {
       })
     } catch (err) {
       console.error("AI refinement failed:", err)
-      alert("Failed to generate AI description. Please try again.")
+      toast.error("Failed to generate AI description. Please try again.")
     } finally {
       setLoading(false)
     }
   }
 
   // ==================== SUBMISSION ====================
-  
+
   const getMediaType = (file: File): string => {
     if (file.type.startsWith("image")) return "image"
     if (file.type.startsWith("video")) return "video"
@@ -181,7 +175,7 @@ export default function CitizenPostPage() {
     e.preventDefault()
 
     if (!file) {
-      alert("Evidence file is required")
+      toast.warning("Evidence file is required")
       return
     }
 
@@ -196,21 +190,21 @@ export default function CitizenPostPage() {
 
       await uploadEvidence(complaint.id, file)
 
-      alert("Complaint submitted successfully!")
-      router.push("/citizen/dashboard");
+      toast.success("Complaint submitted successfully!")
+      router.push("/citizen/complaints");
       // Reset form
       setForm(INITIAL_FORM_STATE)
       setFile(null)
     } catch (err) {
       console.error("Submission failed:", err)
-      alert("Failed to submit complaint. Please try again.")
+      toast.error("Failed to submit complaint. Please try again.")
     } finally {
       setLoading(false)
     }
   }
 
   // ==================== RENDER ====================
-  
+
   const isImageFile = file?.type.startsWith("image")
 
   return (
