@@ -106,6 +106,35 @@ class ComplaintDetailedView(APIView):
         serializer = self.serializer_class(complaint)
         return Response(serializer.data)
 
+class ResolveComplaintGroupStatus(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = complaints_serializer.ResolveGroupStatusSerializer
+
+    def post(self, request, group_id):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            group = complaints_entity.ComplaintGroup.objects.get(id=group_id)
+        except complaints_entity.ComplaintGroup.DoesNotExist:
+            return Response(
+                {"detail": "Complaint group not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        group.grouped_status = serializer.validated_data.get("status","OPEN")
+        group.save(update_fields=["grouped_status"])
+
+        return Response(
+            {
+                "id": group.id,
+                "status": group.grouped_status,
+                "message": "Group status updated successfully"
+            },
+            status=status.HTTP_200_OK
+        )
+
+
 class GeoTestAPIView(APIView):
     def post(self, request):
         lat = request.data.get("latitude")

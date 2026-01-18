@@ -103,6 +103,17 @@ class ComplaintGroupSerializer(serializers.ModelSerializer):
     class Meta:
         model = complaints_entity.ComplaintGroup
         fields = "__all__"
+        
+class ResolveGroupStatusSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(
+        choices=[
+            ('OPEN', 'Open'),
+            ('IN_PROGRESS', 'In Progress'),
+            ('RESOLVED', 'Resolved'),
+            ('CLOSED', 'Closed'),
+        ]
+    )
+
 class ParticularComplaintGroupSerializer(serializers.ModelSerializer):
     department = serializers.StringRelatedField()
     timeline = GroupTimelineSerializer(many=True, read_only=True)

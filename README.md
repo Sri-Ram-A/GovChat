@@ -16,3 +16,11 @@ complaint id 25
 First create dummy departments in django-admin dashboard
 
 npm install ogl
+
+## Pending Work
+- Admin can add nearby Services,Citizen can see those services  
+- text2text model and translation pending
+- Should create supervisor/handler registration
+- Work assignment to the supervisors/handler
+- Heavily Refractor frontend (too much repeated code in that complaints-courtesy of gpt)
+- Should rename and organise backend , I have made it very cluttered will take care of that

@@ -16,6 +16,7 @@ urlpatterns = [
     path("complaints/",complaints.DepartmentListComplaints.as_view()),
     path("complaint-groups/",complaints.DepartmentListComplaintGroups.as_view()),
     path("complaint-groups/<int:group_id>/",complaints.ParticularComplaintGroup.as_view()),
+    path("complaint-groups/status/<int:group_id>/",complaints.ResolveComplaintGroupStatus.as_view()),
     path("complaint/<int:complaint_id>/",complaints.ComplaintDetailedView.as_view()),
     path("timeline/",complaints.GroupTimelineCreateAPIView.as_view()),
 

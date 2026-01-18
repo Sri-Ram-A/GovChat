@@ -48,6 +48,12 @@ function CoordBadge({ lat, lng }: { lat: number; lng: number }) {
         </div>
     );
 }
+const GROUP_STATUS_OPTIONS: { value: GroupStatus; label: string }[] = [
+    { value: "OPEN", label: "Open" },
+    { value: "IN_PROGRESS", label: "In Progress" },
+    { value: "RESOLVED", label: "Resolved" },
+    { value: "CLOSED", label: "Closed" },
+];
 
 /** --- Main Component --- **/
 export default function AdminGroupsPage() {
@@ -61,6 +67,10 @@ export default function AdminGroupsPage() {
     const [timelineText, setTimelineText] = useState("");
     const [timelineTitle, setTimelineTitle] = useState("");
     const [timelineImage, setTimelineImage] = useState<File | null>(null);
+
+    const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+    const [newStatus, setNewStatus] = useState<GroupStatus | null>(null);
+    const [updatingStatus, setUpdatingStatus] = useState(false);
 
 
     useEffect(() => {
@@ -92,7 +102,7 @@ export default function AdminGroupsPage() {
         try {
             await REQUEST("POST", "admins/timeline/", formData, { isMultipart: true });
             toast.success("Timeline updated");
-            setTimelineOpen(true);
+            setTimelineOpen(false);
             setTimelineText("");
             setTimelineTitle("");
             setTimelineImage(null);
@@ -116,6 +126,42 @@ export default function AdminGroupsPage() {
             setLoadingComplaints(false);
         }
     }
+
+    async function updateGroupStatus() {
+        if (!selectedGroup || !newStatus) return;
+
+        try {
+            setUpdatingStatus(true);
+
+            await REQUEST(
+                "POST",
+                `admins/complaint-groups/status/${selectedGroup.id}/`,
+                { status: newStatus }
+            );
+
+            toast.success("Group status updated");
+
+            // Update UI instantly (no refetch needed)
+            setGroups((prev) =>
+                prev.map((g) =>
+                    g.id === selectedGroup.id
+                        ? { ...g, grouped_status: newStatus }
+                        : g
+                )
+            );
+
+            setSelectedGroup((prev) =>
+                prev ? { ...prev, grouped_status: newStatus } : prev
+            );
+
+            setStatusDialogOpen(false);
+        } catch {
+            toast.error("Failed to update group status");
+        } finally {
+            setUpdatingStatus(false);
+        }
+    }
+
 
     function closeGroup() {
         setSelectedGroup(null);
@@ -184,9 +230,18 @@ export default function AdminGroupsPage() {
                                                 Update Timeline
                                             </Button>
 
-                                            <Button variant="secondary" size="sm" onClick={() => openGroup(g)}>
+                                            <Button
+                                                variant="secondary"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setSelectedGroup(g);
+                                                    setNewStatus(g.grouped_status);
+                                                    setStatusDialogOpen(true);
+                                                }}
+                                            >
                                                 Update Status
                                             </Button>
+
                                         </div>
                                     </div>
                                 ))}
@@ -305,7 +360,6 @@ export default function AdminGroupsPage() {
                             onChange={(e) => setTimelineText(e.target.value)}
                         />
 
-
                         <input
                             type="file"
                             accept="image/*"
@@ -315,6 +369,47 @@ export default function AdminGroupsPage() {
                         <Button onClick={submitTimeline}>
                             Post Update
                         </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Update Group Status</DialogTitle>
+                        <DialogDescription>
+                            Change the lifecycle state of this complaint group.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4">
+                        <select
+                            className="w-full border rounded p-2"
+                            value={newStatus ?? ""}
+                            onChange={(e) => setNewStatus(e.target.value as GroupStatus)}
+                        >
+                            {GROUP_STATUS_OPTIONS.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                </option>
+                            ))}
+                        </select>
+
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                onClick={() => setStatusDialogOpen(false)}
+                            >
+                                Cancel
+                            </Button>
+
+                            <Button
+                                onClick={updateGroupStatus}
+                                disabled={updatingStatus}
+                            >
+                                {updatingStatus ? "Updating…" : "Update Status"}
+                            </Button>
+                        </DialogFooter>
                     </div>
                 </DialogContent>
             </Dialog>

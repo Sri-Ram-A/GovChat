@@ -5,3 +5,4 @@ class EntitiesConfig(AppConfig):
     name = 'entities'
     def ready(self):
         import signals.complaints
+        import signals.groups_status
