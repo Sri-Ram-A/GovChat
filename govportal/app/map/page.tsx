@@ -4,22 +4,12 @@ import { useEffect, useState } from "react";
 import type { LatLngExpression } from "leaflet";
 import { toast } from "sonner";
 import { MapPinIcon, CircleIcon } from "lucide-react";
+import { Map, MapMarker, MapPopup, MapTileLayer, MapZoomControl, MapControlContainer, MapTooltip, } from "@/components/ui/map";
+import { Badge } from "@/components/ui/badge";
+import { CardContent } from "@/components/ui/card";
 
 import { REQUEST } from "@/services/api";
 import { Complaint } from "@/types";
-
-import {
-  Map,
-  MapMarker,
-  MapPopup,
-  MapTileLayer,
-  MapZoomControl,
-  MapControlContainer,
-  MapTooltip,
-} from "@/components/ui/map";
-
-import { Badge } from "@/components/ui/badge";
-import { CardContent } from "@/components/ui/card";
 
 const BANGALORE_CENTER: LatLngExpression = [12.9629, 77.5775];
 

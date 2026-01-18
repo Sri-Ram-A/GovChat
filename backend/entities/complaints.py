@@ -1,5 +1,6 @@
 from django.db import models
 from .citizens import CitizenProfile
+from .admins import AdminProfile
 from .governance import Department
 
 class ComplaintGroup(models.Model):
@@ -100,11 +101,11 @@ class Evidence(models.Model):
 
 class GroupTimeline(models.Model):
     group = models.ForeignKey(ComplaintGroup,on_delete=models.CASCADE,related_name="timeline")
+    admin = models.ForeignKey(AdminProfile,on_delete=models.CASCADE,related_name='timeline')
 
+    title = models.CharField(max_length=255,null=True, blank=True)
     text = models.TextField(blank=True)
     image = models.ImageField(upload_to="group_timeline/", null=True, blank=True)
-
-    created_by_admin = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

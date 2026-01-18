@@ -31,6 +31,25 @@ export interface Evidence {
 
 export type ComplaintStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED" | "DRAFT";
 
+export interface Timeline {
+  id: number;
+  title: string;
+  text?: string;
+  created_at: string; // ISO
+  admin?: string;
+}
+export interface Group {
+  id: number;
+  department?: string;
+  timeline?:Timeline[];
+  title: string;
+  centroid_latitude: number;
+  centroid_longitude: number;
+  radius_meters?: number;
+  grouped_status: ComplaintStatus;
+  complaints_count?: number;
+  created_at?: string;
+}
 export interface Complaint {
   id: number;
   title: string;
@@ -41,6 +60,7 @@ export interface Complaint {
   timestamp: string; // ISO
   likes_count: number;
   evidences?: Evidence[];
+  group?: Group;
   citizen?: string;
   address_line_1?: string;
   address_line_2?: string;
@@ -96,6 +116,19 @@ export interface CitizenProfile {
   is_verified: boolean
 }
 
+export type GroupStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
+
+export interface ComplaintGroup {
+    id: number;
+    title: string;
+    department?: string;
+    centroid_latitude: number;
+    centroid_longitude: number;
+    radius_meters?: number;
+    grouped_status: GroupStatus;
+    complaints_count?: number;
+    created_at?: string;
+}
 
 export interface AuthResponse {
   access: string

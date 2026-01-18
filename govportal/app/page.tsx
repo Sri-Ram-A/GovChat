@@ -116,7 +116,7 @@ export default function HomePage() {
             </Link>
 
             {/* Admin */}
-            <Link href="/admin/login">
+            <Link href="/admin/home">
               <div
                 className="
                   group cursor-pointer

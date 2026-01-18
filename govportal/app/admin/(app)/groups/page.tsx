@@ -1,0 +1,324 @@
+"use client";
+
+import { useEffect, useState, useMemo } from "react";
+import { format } from "date-fns";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, } from "@/components/ui/table";
+import { toast } from "sonner";
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog"
+import { REQUEST } from "@/services/api";
+import type { Complaint } from "@/types";
+import { Map, MapMarker, MapTileLayer } from "@/components/ui/map";
+import type { LatLngExpression } from "leaflet";
+import { MapPin } from "lucide-react";
+import { GroupStatus, ComplaintGroup } from "@/types";
+
+/** --- Helper UI pieces --- **/
+function GroupStatusBadge({ status }: { status: GroupStatus }) {
+    const map: Record<GroupStatus, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
+        OPEN: { variant: "destructive", label: "Open" },
+        IN_PROGRESS: { variant: "secondary", label: "In Progress" },
+        RESOLVED: { variant: "default", label: "Resolved" },
+        CLOSED: { variant: "outline", label: "Closed" },
+    };
+
+    const cfg = map[status] ?? { variant: "outline", label: status };
+    return <Badge variant={cfg.variant} className="font-normal">{cfg.label}</Badge>;
+}
+
+function CoordBadge({ lat, lng }: { lat: number; lng: number }) {
+    return (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <MapPin className="h-4 w-4" />
+            <span className="font-mono">{lat.toFixed(4)}, {lng.toFixed(4)}</span>
+        </div>
+    );
+}
+
+/** --- Main Component --- **/
+export default function AdminGroupsPage() {
+    const [groups, setGroups] = useState<ComplaintGroup[]>([]);
+    const [loadingGroups, setLoadingGroups] = useState(true);
+    const [selectedGroup, setSelectedGroup] = useState<ComplaintGroup | null>(null);
+    const [groupComplaints, setGroupComplaints] = useState<Complaint[]>([]);
+    const [loadingComplaints, setLoadingComplaints] = useState(false);
+
+    const [timelineOpen, setTimelineOpen] = useState(false);
+    const [timelineText, setTimelineText] = useState("");
+    const [timelineTitle, setTimelineTitle] = useState("");
+    const [timelineImage, setTimelineImage] = useState<File | null>(null);
+
+
+    useEffect(() => {
+        fetchGroups();
+    }, []);
+
+    async function fetchGroups() {
+        try {
+            setLoadingGroups(true);
+            // Adjust path prefix if your API has /admins/ or similar
+            const data = await REQUEST("GET", "admins/complaint-groups/");
+            setGroups(data || []);
+        } catch (err) {
+            toast.error("Failed to load groups");
+        } finally {
+            setLoadingGroups(false);
+        }
+    }
+
+    async function submitTimeline() {
+        if (!selectedGroup) return;
+        const formData = new FormData();
+        formData.append("group", String(selectedGroup.id));
+        formData.append("text", timelineText);
+        formData.append("title", timelineTitle);
+        if (timelineImage) {
+            formData.append("image", timelineImage);
+        }
+        try {
+            await REQUEST("POST", "admins/timeline/", formData, { isMultipart: true });
+            toast.success("Timeline updated");
+            setTimelineOpen(true);
+            setTimelineText("");
+            setTimelineTitle("");
+            setTimelineImage(null);
+        } catch (err) {
+            toast.error("Failed to post timeline");
+        }
+    }
+
+    async function openGroup(group: ComplaintGroup) {
+        // future: open map / zoom
+        toast(`You are viewing group : ${group.id}`);
+        setSelectedGroup(group);
+        setGroupComplaints([]);
+        try {
+            setLoadingComplaints(true);
+            const data: Complaint[] = await REQUEST("GET", `admins/complaint-groups/${group.id}/`);
+            setGroupComplaints(data || []);
+        } catch (err) {
+            toast.error("Failed to load complaints for group");
+        } finally {
+            setLoadingComplaints(false);
+        }
+    }
+
+    function closeGroup() {
+        setSelectedGroup(null);
+        setGroupComplaints([]);
+    }
+
+    const groupCards = useMemo(() => groups, [groups]);
+
+    return (
+        <div className="min-h-screen bg-background">
+            <main className="container px-6 py-8 space-y-8">
+                <Card className="border shadow-sm">
+                    <CardHeader className="border-b py-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <CardTitle>Total Groups nased on areas</CardTitle>
+                                <CardDescription>
+                                    {loadingGroups ? "Loading groups…" : `${groups.length} groups`}
+                                </CardDescription>
+                            </div>
+                        </div>
+                    </CardHeader>
+
+                    <CardContent className="p-6">
+                        {loadingGroups ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {Array.from({ length: 6 }).map((_, i) => (
+                                    <Skeleton key={i} className="h-28 rounded-lg" />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {groupCards.map((g) => (
+                                    <div key={g.id} className="rounded-lg border p-4 flex flex-col justify-between">
+                                        <div>
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <h3 className="font-semibold text-lg">{g.title}</h3>
+                                                    <div className="text-sm text-muted-foreground mt-1">
+                                                        {g.department ?? "—"}
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-col items-end gap-2">
+                                                    <GroupStatusBadge status={g.grouped_status} />
+                                                    <div className="text-xs text-muted-foreground">{g.complaints_count ?? 0} complaints</div>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-3">
+                                                <CoordBadge lat={g.centroid_latitude} lng={g.centroid_longitude} />
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-4 flex items-center justify-between gap-3">
+                                            <Button variant="outline" size="sm" onClick={() => openGroup(g)}>
+                                                View complaints
+                                            </Button>
+                                            <Button
+                                                variant="default"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setSelectedGroup(g);
+                                                    setTimelineOpen(true);
+                                                }}
+                                            >
+                                                Update Timeline
+                                            </Button>
+
+                                            <Button variant="secondary" size="sm" onClick={() => openGroup(g)}>
+                                                Update Status
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </main>
+
+            {selectedGroup && (
+                <Sheet open={!!selectedGroup} onOpenChange={(open) => !open && closeGroup()}>
+                    <SheetTitle>{selectedGroup.title}</SheetTitle>
+                    <SheetContent className="sm:max-w-3xl p-3">
+                        <SheetHeader className="mb-4">
+                            <div className="flex items-center justify-between gap-4">
+                                <div>
+                                    <div className="flex items-center gap-3 mb-1">
+                                        <GroupStatusBadge status={selectedGroup.grouped_status} />
+                                        <h2 className="text-xl font-bold">{selectedGroup.title}</h2>
+                                    </div>
+                                    <div className="text-sm text-muted-foreground">
+                                        <CoordBadge lat={selectedGroup.centroid_latitude} lng={selectedGroup.centroid_longitude} />
+                                    </div>
+                                </div>
+
+                                <div className="text-sm text-muted-foreground">
+                                    {selectedGroup.complaints_count ?? 0} complaints
+                                </div>
+                            </div>
+                        </SheetHeader>
+
+                        <ScrollArea className="h-[calc(100vh-180px)] pr-4">
+                            <div className="space-y-6">
+                                {/* Map preview */}
+                                <section>
+                                    <div className="rounded-lg overflow-hidden border h-48">
+                                        <Map
+                                            center={[selectedGroup.centroid_latitude, selectedGroup.centroid_longitude] as LatLngExpression}
+                                            zoom={14}
+                                            className="h-full w-full"
+                                        >
+                                            <MapTileLayer />
+                                            <MapMarker
+                                                position={[selectedGroup.centroid_latitude, selectedGroup.centroid_longitude] as LatLngExpression}
+                                            />
+                                        </Map>
+                                    </div>
+                                </section>
+
+                                {/* Complaints table */}
+                                <section>
+                                    <h4 className="font-semibold mb-3 text-foreground">Complaints</h4>
+
+                                    {loadingComplaints ? (
+                                        <div className="space-y-3">
+                                            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12 rounded" />)}
+                                        </div>
+                                    ) : groupComplaints.length === 0 ? (
+                                        <div className="text-sm text-muted-foreground">No complaints found in this group.</div>
+                                    ) : (
+                                        <Card className="border">
+                                            <CardContent className="p-0">
+                                                <Table>
+                                                    <TableHeader>
+                                                        <TableRow>
+                                                            <TableHead>Title</TableHead>
+                                                            <TableHead>Status</TableHead>
+                                                            <TableHead>Location</TableHead>
+                                                            <TableHead>Reported</TableHead>
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {groupComplaints.map((c) => (
+                                                            <TableRow key={c.id} className="hover:bg-muted/50">
+                                                                <TableCell>
+                                                                    <div className="font-medium truncate">{c.title}</div>
+                                                                    <div className="text-xs text-muted-foreground truncate">{c.description?.slice(0, 60)}{c.description && c.description.length > 60 ? "..." : ""}</div>
+                                                                </TableCell>
+                                                                <TableCell><Badge variant="default" className="font-normal">{c.status}</Badge></TableCell>
+                                                                <TableCell>
+                                                                    <div className="text-sm truncate">{c.address_line_2 || "—"}</div>
+                                                                </TableCell>
+                                                                <TableCell className="text-sm text-muted-foreground">{format(new Date(c.timestamp), "MMM dd, yyyy")}</TableCell>
+                                                                <TableCell className="text-right">
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                    </TableBody>
+                                                </Table>
+                                            </CardContent>
+                                        </Card>
+                                    )}
+                                </section>
+                            </div>
+                        </ScrollArea>
+                    </SheetContent>
+                </Sheet>
+            )}
+            <Dialog open={timelineOpen} onOpenChange={setTimelineOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Update Timeline</DialogTitle>
+                    </DialogHeader>
+
+                    <div className="space-y-4">
+                        <textarea
+                            className="w-full border rounded p-2"
+                            placeholder="Proper Title"
+                            value={timelineTitle}
+                            onChange={(e) => setTimelineTitle(e.target.value)}
+                        />
+                        <textarea
+                            className="w-full border rounded p-2"
+                            placeholder="Timeline update…"
+                            value={timelineText}
+                            onChange={(e) => setTimelineText(e.target.value)}
+                        />
+
+
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => setTimelineImage(e.target.files?.[0] || null)}
+                        />
+
+                        <Button onClick={submitTimeline}>
+                            Post Update
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+        </div>
+    );
+}

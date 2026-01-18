@@ -2,11 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { REQUEST, API_URL } from "@/services/api";
-import { Complaint, Evidence } from "@/types";
-import { cn } from "@/lib/utils";
-import { Card, CardContent, CardHeader, } from "@/components/ui/card";
 
+import { cn } from "@/lib/utils";
+import { Card, CardContent, CardFooter, CardHeader, } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,15 +13,10 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { FilePlusCorner, MessageCircle, MapPin } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { ThumbsUp, Eye, FileText, ImageIcon, Video, Music, } from "lucide-react";
 
-import {
-  ThumbsUp,
-  Eye,
-  FileText,
-  ImageIcon,
-  Video,
-  Music,
-} from "lucide-react";
+import { REQUEST, API_URL } from "@/services/api";
+import { Complaint, Evidence } from "@/types";
 
 /* -------------------------------- Evidence Renderer -------------------------------- */
 
@@ -82,6 +75,7 @@ export default function AllComplaintsPage() {
   const router = useRouter();
 
   const [complaints, setComplaints] = useState<Complaint[]>([]);
+  const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -93,6 +87,11 @@ export default function AllComplaintsPage() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  const handleComplaintClick = (complaint: Complaint) => {
+    setSelectedComplaint(complaint);
+    router.push(`/citizen/complaints/${complaint.id}`);
+  };
 
   return (
     <>
@@ -111,41 +110,6 @@ export default function AllComplaintsPage() {
       </div>
 
       <div className="relative max-w-3xl mx-auto space-y-6 px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold tracking-tight">
-            Community Complaints
-          </h1>
-
-          <div className="flex gap-2 ">
-            <Button asChild variant="outline" className="border-white border-2">
-              <Link href="/citizen/post">
-                <FilePlusCorner  />
-                <span className="hidden sm:inline">
-                  New Complaint
-                </span>
-              </Link>
-            </Button>
-
-            <Button asChild >
-              <Link href="/citizen/chat">
-                <MessageCircle  />
-                <span className="hidden sm:inline">
-                  Chat with Us
-                </span>
-              </Link>
-            </Button>
-
-            <Button asChild className="bg-green-300">
-              <Link href="/citizen/map">
-                <MapPin  />
-                <span className="hidden sm:inline">
-                  View Map
-                </span>
-              </Link>
-            </Button>
-          </div>
-        </div>
 
         {/* Loading Skeleton */}
         {loading &&
@@ -233,26 +197,12 @@ export default function AllComplaintsPage() {
                     ))}
                   </div>
                 )}
-
-                {/* Actions */}
-                <div className="flex items-center gap-6 pt-2 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <ThumbsUp className="h-4 w-4" />
-                    {c.likes_count}
-                  </div>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="gap-1"
-                    onClick={() => router.push(`/citizens/complaints/${c.id}`)}
-                  >
-                    <Eye className="h-4 w-4" />
-                    View
-                  </Button>
-
-                </div>
               </CardContent>
+              <CardFooter>
+                <Button onClick={()=>{handleComplaintClick(c)}}>
+                  View
+                </Button>
+              </CardFooter>
             </Card>
           ))}
       </div>

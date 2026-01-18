@@ -3,7 +3,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import PermissionDenied, ValidationError
 import entities.complaints as complaints_entity
 import entities.governance as complaints_governance
-
+from entities.admins import AdminProfile
 
 class ImageCaptionSerializer(serializers.Serializer):
     file = serializers.ImageField()
@@ -63,6 +63,20 @@ class EvidenceCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         return complaints_entity.Evidence.objects.create(**validated_data)
 
+class GroupTimelineCreateSerializer(serializers.ModelSerializer):
+    group = serializers.PrimaryKeyRelatedField(queryset=complaints_entity.ComplaintGroup.objects.all())
+
+    class Meta:
+        model = complaints_entity.GroupTimeline
+        exclude = ["admin"]
+
+    def create(self, validated_data):
+        request = self.context["request"]
+        return complaints_entity.GroupTimeline.objects.create(
+            admin=request.user.admin_profile,
+            **validated_data
+        )
+
 class EvidenceListSerializer(serializers.ModelSerializer):
     class Meta:
         model = complaints_entity.Evidence
@@ -76,9 +90,31 @@ class ComplaintListSerializer(serializers.ModelSerializer):
     class Meta:
         model = complaints_entity.Complaint
         fields = "__all__"
+class GroupTimelineSerializer(serializers.ModelSerializer):
+    admin = serializers.StringRelatedField()
+    class Meta:
+        model = complaints_entity.GroupTimeline
+        fields = ["id", "title", "text", "image", "created_at", "admin"]
+
 class ComplaintGroupSerializer(serializers.ModelSerializer):
     department = serializers.StringRelatedField()
     complaints_count = serializers.IntegerField()
+    timeline = GroupTimelineSerializer(many=True, read_only=True)
     class Meta:
         model = complaints_entity.ComplaintGroup
+        fields = "__all__"
+class ParticularComplaintGroupSerializer(serializers.ModelSerializer):
+    department = serializers.StringRelatedField()
+    timeline = GroupTimelineSerializer(many=True, read_only=True)
+    class Meta:
+        model = complaints_entity.ComplaintGroup
+        fields = "__all__"
+
+class ComplaintDetailedViewSerializer(serializers.ModelSerializer):
+    evidences = EvidenceListSerializer(many=True, read_only=True)
+    # comments = CommentSerializer(many=True, read_only=True)
+    group = ParticularComplaintGroupSerializer(read_only=True)
+
+    class Meta:
+        model = complaints_entity.Complaint
         fields = "__all__"

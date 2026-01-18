@@ -12,6 +12,7 @@ my ip address was 192.168.1.6 , what you must do is get your pc ip addr then rep
 12.9 77.6 cubbon
 12.5 77.3 lalabhag
 bescom 3
+complaint id 25
 First create dummy departments in django-admin dashboard
 
 npm install ogl

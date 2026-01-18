@@ -30,7 +30,7 @@ export default function LoginPage() {
         // Store the access token 
         setStoredToken(res.access);        
         toast.success("Welcome back!");
-        router.push("/admin/home");
+        router.push("/admin/groups");
       } else {
         // No token received - this should NOT happen on successful login
         console.error("Login response missing token:", res);

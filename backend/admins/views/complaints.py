@@ -75,6 +75,37 @@ class ParticularComplaintGroup(APIView):
         serializer = self.serializer_class(qs, many=True)
         return Response(serializer.data)
 
+class GroupTimelineCreateAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = complaints_serializer.GroupTimelineCreateSerializer
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data,context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        timeline = serializer.save()
+        return Response(
+            {"id": timeline.id, "message": "Timeline created"},
+            status=status.HTTP_201_CREATED
+        )
+
+class ComplaintDetailedView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = complaints_serializer.ComplaintDetailedViewSerializer
+
+    def get(self, request, complaint_id):
+        complaint = (
+            complaints_entity.Complaint.objects
+            .select_related("citizen", "department", "group")
+            .prefetch_related(
+                "evidences",
+                # "comments",
+                "group__timeline" # Django traverses relations automatically
+            )
+        )
+        complaint = get_object_or_404(complaint, id=complaint_id)
+        serializer = self.serializer_class(complaint)
+        return Response(serializer.data)
+
 class GeoTestAPIView(APIView):
     def post(self, request):
         lat = request.data.get("latitude")
