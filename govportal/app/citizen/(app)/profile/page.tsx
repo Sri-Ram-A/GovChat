@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { REQUEST } from "@/services/api"
-import { getStoredToken } from "@/services/helpers"
+import { getStoredToken } from "@/services/auth"
 import { Complaint } from "@/types"
 import {
   Card,

@@ -26,7 +26,7 @@ export default function HomePage() {
             opacity-60
           "
         >
-          <source src="/introBG.mp4" type="video/mp4" />
+          <source src="/introbgMain.mp4" type="video/mp4" />
         </video>
 
         {/* soft overlay to improve text contrast */}

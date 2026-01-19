@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Image from "next/image"
-import { getStoredToken, clearStoredToken } from "@/services/helpers"
+import { getStoredToken, clearStoredToken } from "@/services/auth"
 import { useRouter } from "next/navigation"
 
 
@@ -35,6 +35,7 @@ export default function CitizenHome() {
 
   return (
     <div className="min-h-screen bg-linear-to-b from-background to-muted/30">
+      {/* Welcome Screen */}
       <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         <section >
           <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -85,7 +86,7 @@ export default function CitizenHome() {
           </div>
         </section>
 
-        {/* ================= IMAGE SHOWCASE ================= */}
+        {/* Image showcase */}
         <section className="">
           <div className="text-center mb-10">
             <h2 className="text-3xl font-bold mb-3">Platform in Action</h2>
@@ -102,7 +103,7 @@ export default function CitizenHome() {
               "/home/4.png",
               "/home/3.png",
             ].map((src, index) => (
-              <div>
+              <div key={index}>
                 <Image
                   src={src}
                   alt={`Platform preview ${index + 1}`}
@@ -112,7 +113,6 @@ export default function CitizenHome() {
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 />
               </div>
-
             ))}
           </div>
         </section>

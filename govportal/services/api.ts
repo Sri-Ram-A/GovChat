@@ -1,57 +1,78 @@
 
-// export const API_URL = "http://127.0.0.1:8000/" // No cert
-export const API_URL = "https://127.0.0.1:8000/" // Use cert
+export const API_URL = "http://127.0.0.1:8000/" // No cert
+// export const API_URL = "https://127.0.0.1:8000/" // Use cert
 
 type HttpMethod = "GET" | "POST" | "PUT" | "DELETE"
+type BackendError = {
+  message?: string;
+  error?: string;
+  detail?: string;
+};
 
-function extractAllErrors(error: any, messages: string[] = []): string {
-  if (!error) return "Unknown error"
-  // If it's already a string
-  if (typeof error === "string") return error
-  // If it's an array, join entries
-  if (Array.isArray(error)) return error.map((e) => (typeof e === "string" ? e : JSON.stringify(e))).join("\n")
+async function handleErrorResponse(res: Response): Promise<never> {
+  let data: BackendError = {};
+  try { data = await res.json(); } 
+  catch { }
+  throw {
+    status: res.status,
+    message:
+      data.message ||
+      data.error ||
+      data.detail ||
+      "Request failed",
+  };
+}
 
-  // If it's an object, try common shapes
-  // 1. { message: ... }
-  if (error.message) return extractAllErrors(error.message, messages)
 
-  // 2. field -> ["error msg"] or field -> { ... }
-  Object.values(error).forEach((value: any) => {
-    if (Array.isArray(value)) {
-      messages.push(value[0])
-    } else if (typeof value === "object") {
-      const nested = extractAllErrors(value, messages)
-      if (nested) messages.push(nested)
-    } else if (typeof value === "string") {
-      messages.push(value)
-    }
-  })
-  return messages.join("\n")
+async function refreshAccessToken(): Promise<string> {
+  const refresh = localStorage.getItem("refresh");
+  if (!refresh) throw new Error("No refresh token");
+  const res = await fetch(`${API_URL}api/token/refresh/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh }),
+  });
+
+  if (!res.ok) {
+    localStorage.clear();
+    throw new Error("Session expired");
+  }
+
+  const data = await res.json();
+  localStorage.setItem("access", data.access);
+  return data.access;
 }
 
 export async function REQUEST(
-  method: string,
+  method: HttpMethod,
   url: string,
   body?: any,
   options?: { isMultipart?: boolean }
 ) {
-  const headers: Record<string, string> = {};
-  if (!options?.isMultipart) { headers["Content-Type"] = "application/json"; }
-  const token = localStorage.getItem("access");
-  if (token) { headers["Authorization"] = `Bearer ${token}`; }
-  const res = await fetch(
-    `${API_URL}api/${url}`,
-    {
+  const request = async (): Promise<Response> => {
+    const headers: Record<string, string> = {};
+    if (!options?.isMultipart) { headers["Content-Type"] = "application/json"; }
+    const access = localStorage.getItem("access");
+    if (access) { headers["Authorization"] = `Bearer ${access}`; }
+    return fetch(`${API_URL}api/${url}`, {
       method,
       headers,
-      body: options?.isMultipart ? body : body ? JSON.stringify(body) : null,
+      body: options?.isMultipart
+        ? body
+        : body
+          ? JSON.stringify(body)
+          : null,
+    });
+  };
+  let res = await request();
+  if (res.status === 401) {
+    try {
+      await refreshAccessToken();
+      res = await request(); // retry exactly once
+    } catch {
+      throw { message: "Session expired. Please login again." };
     }
-  );
-
-  if (!res.ok) {
-    const err = await res.json();
-    throw err;
   }
-
+  if (!res.ok) { await handleErrorResponse(res); }
   return res.json();
 }

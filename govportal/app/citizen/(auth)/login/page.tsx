@@ -8,14 +8,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import FormField from "@/components/reusables/forms/FormField";
 import { toast } from "sonner";
 import { REQUEST } from "@/services/api";
-import { setStoredToken } from "@/services/helpers";
+import { setStoredToken } from "@/services/auth";
 import { Loader2, Lock, User } from "lucide-react";
 
 export default function LoginPage() {
+  const [isVisible, setIsVisible] = useState(false)
+  const [isExiting, setIsExiting] = useState(false)
+
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({ username: "", password: "" });
+
+    React.useEffect(() => {
+    requestAnimationFrame(() => setIsVisible(true))
+  }, [])
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +38,11 @@ export default function LoginPage() {
         // Store the access token 
         setStoredToken(res.access);        
         toast.success("Welcome back!");
-        router.push("/citizen/home");
+        setIsExiting(true)
+        setTimeout(() => {
+          router.push("/citizen/home")
+        }, 300)
+
       } else {
         // No token received - this should NOT happen on successful login
         console.error("Login response missing token:", res);
@@ -46,8 +58,47 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-background to-muted dark:from-slate-900">
-      <Card className="w-full max-w-md shadow-lg">
+    <div
+      className={`
+        relative min-h-screen flex items-center justify-center overflow-hidden text-foreground
+        transition-all duration-300 ease-out
+        ${
+          isExiting
+            ? "opacity-0 scale-[0.98]"
+            : isVisible
+            ? "opacity-100 translate-y-0"
+            : "opacity-0 translate-y-2"
+        }
+      `}
+    >
+
+        {/* FULLSCREEN VIDEO BACKGROUND */}
+      <div className="absolute inset-0 -z-10">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          className="h-full w-full object-cover opacity-90"
+        >
+          <source src="/background1.mp4" type="video/mp4" />
+        </video>
+
+        <div className="absolute inset-0 bg-black/15" />
+      </div>
+
+
+      <Card
+        className="
+          w-full max-w-md p-10
+          bg-white/10
+          backdrop-blur-xl
+          border border-white/20
+          shadow-2xl
+        "
+      >
+
         <CardHeader className="text-center">
           <Lock className="h-6 w-6 text-blue-600" />
           <CardTitle className="text-2xl">Welcome Back</CardTitle>
@@ -91,9 +142,20 @@ export default function LoginPage() {
 
           <p className="text-sm text-center mt-4">
             Don't have an account?{" "}
-            <Link href="/citizen/register" className="text-primary hover:underline">
-              Register
-            </Link>
+            <span
+            onClick={() => {
+              setIsExiting(true)
+              setTimeout(() => {
+                router.push("/citizen/register")
+              }, 300)
+            }}
+            className="text-primary hover:underline cursor-pointer"
+            >
+
+            Register
+
+            </span>
+
           </p>
         </CardContent>
       </Card>

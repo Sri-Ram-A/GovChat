@@ -8,90 +8,85 @@ import { API_URL } from "@/services/api";
 import { Timeline as AceternityTimeline } from "@/components/ui/timeline";
 import { format } from "date-fns";
 import { formatDistanceToNow } from "date-fns";
-import {
-  Card,
-  CardHeader,
-  CardContent,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardHeader, CardContent, CardTitle, } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function resolveMediaUrl(path?: string | null) {
-    if (!path) return null;
-    return path.startsWith("http")
-        ? path
-        : `${API_URL}${path.replace(/^\/+/, "")}`;
+  if (!path) return null;
+  return path.startsWith("http")
+    ? path
+    : `${API_URL}${path.replace(/^\/+/, "")}`;
 }
 function GroupTimeline({ timeline = [] }: { timeline: any[] }) {
-    const data = timeline.map((item) => ({
-        title: format(new Date(item.created_at), "dd MMM yyyy"),
-        content: (
-            <div className="space-y-3">
-                {item.title && (
-                    <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-                        {item.title}
-                    </h4>
-                )}
+  const data = timeline.map((item) => ({
+    title: format(new Date(item.created_at), "dd MMM yyyy"),
+    content: (
+      <div className="space-y-3">
+        {item.title && (
+          <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+            {item.title}
+          </h4>
+        )}
 
-                <p className="text-sm text-neutral-700 dark:text-neutral-300">
-                    {item.text}
-                </p>
+        <p className="text-sm text-neutral-700 dark:text-neutral-300">
+          {item.text}
+        </p>
 
-                {item.image && (
-                    <img
-                        src={resolveMediaUrl(item.image)!}
-                        alt="Timeline"
-                        className="w-full max-w-md rounded-xl border shadow-sm"
-                    />
-                )}
+        {item.image && (
+          <img
+            src={resolveMediaUrl(item.image)!}
+            alt="Timeline"
+            className="w-full max-w-md rounded-xl border shadow-sm"
+          />
+        )}
 
-                <p className="text-xs text-neutral-500">
-                    Posted by {item.admin}
-                </p>
-            </div>
-        ),
-    }));
+        <p className="text-xs text-neutral-500">
+          Posted by {item.admin}
+        </p>
+      </div>
+    ),
+  }));
 
-    if (data.length === 0) return null;
+  if (data.length === 0) return null;
 
-    return (
-        <div className="relative w-full overflow-hidden">
-            <AceternityTimeline data={data} />
-        </div>
-    );
+  return (
+    <div className="relative w-full overflow-hidden">
+      <AceternityTimeline data={data} />
+    </div>
+  );
 }
 
 function EvidenceGrid({ evidences = [] }: { evidences: any[] }) {
-    if (evidences.length === 0) return null;
+  if (evidences.length === 0) return null;
 
-    return (
-        <div >
-            {evidences.map((ev) => {
-                const src = resolveMediaUrl(ev.file);
-                if (!src) return null;
+  return (
+    <div >
+      {evidences.map((ev) => {
+        const src = resolveMediaUrl(ev.file);
+        if (!src) return null;
 
-                return (
-                    <div
-                        key={ev.id}
-                        className="rounded-xl overflow-hidden border bg-muted/40"
-                    >
-                        {ev.media_type === "image" && (
-                            <img src={src} className="w-full h-full object-cover" />
-                        )}
+        return (
+          <div
+            key={ev.id}
+            className="rounded-xl overflow-hidden border bg-muted/40"
+          >
+            {ev.media_type === "image" && (
+              <img src={src} className="w-full h-full object-cover" />
+            )}
 
-                        {ev.media_type === "video" && (
-                            <video src={src} controls className="w-full" />
-                        )}
+            {ev.media_type === "video" && (
+              <video src={src} controls className="w-full" />
+            )}
 
-                        {ev.media_type === "audio" && (
-                            <audio src={src} controls className="w-full p-3" />
-                        )}
-                    </div>
-                );
-            })}
-        </div>
-    );
+            {ev.media_type === "audio" && (
+              <audio src={src} controls className="w-full p-3" />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 
@@ -103,7 +98,7 @@ export default function ComplaintDetailPage() {
   useEffect(() => {
     REQUEST("GET", `admins/complaint/${params.id}/`)
       .then((res) => setData(res))
-      .catch(() => toast.error("Failed to load complaint"))
+      .catch((err) => { toast.error(err?.message || "Failed to load complaint"); })
       .finally(() => setLoading(false));
   }, [params.id]);
 

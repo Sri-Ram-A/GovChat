@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Department, RegisterForm } from "@/types/index";
 import { REQUEST } from "@/services/api";
-import { setStoredToken } from "@/services/helpers";
+import { setStoredToken } from "@/services/auth";
 
 type Errors = Record<string, string>;
 
