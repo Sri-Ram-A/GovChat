@@ -72,9 +72,15 @@ export default function AdminGroupsPage() {
     const [newStatus, setNewStatus] = useState<GroupStatus | null>(null);
     const [updatingStatus, setUpdatingStatus] = useState(false);
 
+    const [assignDialogOpen, setAssignDialogOpen] = useState(false)
+    const [handlers, setHandlers] = useState<any[]>([])
+    const [selectedHandlerId, setSelectedHandlerId] = useState<number | null>(null)
+    const [loadingHandlers, setLoadingHandlers] = useState(false)
+
 
     useEffect(() => {
         fetchGroups();
+        fetchHandlers();
     }, []);
 
     async function fetchGroups() {
@@ -162,10 +168,41 @@ export default function AdminGroupsPage() {
         }
     }
 
-
     function closeGroup() {
         setSelectedGroup(null);
         setGroupComplaints([]);
+    }
+
+    async function fetchHandlers() {
+        try {
+            setLoadingHandlers(true)
+            const data = await REQUEST(
+                "GET",
+                `handlers/department/`
+            )
+            setHandlers(data || [])
+        } catch {
+            toast.error("Failed to load handlers")
+        } finally {
+            setLoadingHandlers(false)
+        }
+    }
+
+    async function assignGroup() {
+        if (!selectedHandlerId || !selectedGroup) return
+
+        try {
+            await REQUEST(
+                "POST",
+                `handlers/${selectedHandlerId}/assign-group/`,
+                { group_id: selectedGroup.id }
+            )
+
+            toast.success("Group assigned successfully")
+            setAssignDialogOpen(false)
+        } catch {
+            toast.error("Failed to assign group")
+        }
     }
 
     const groupCards = useMemo(() => groups, [groups]);
@@ -241,6 +278,17 @@ export default function AdminGroupsPage() {
                                             >
                                                 Update Status
                                             </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setSelectedGroup(g)
+                                                    setAssignDialogOpen(true)
+                                                }}
+                                            >
+                                                Assign Group
+                                            </Button>
+
 
                                         </div>
                                     </div>
@@ -411,6 +459,57 @@ export default function AdminGroupsPage() {
                             </Button>
                         </DialogFooter>
                     </div>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Assign Group</DialogTitle>
+                        <DialogDescription>
+                            Select a handler to assign this group.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {loadingHandlers ? (
+                        <Skeleton className="h-24" />
+                    ) : (
+                        <div className="space-y-3">
+                            {handlers.map((h) => (
+                                <label
+                                    key={h.id}
+                                    className="flex items-center gap-3 border rounded p-3 cursor-pointer"
+                                >
+                                    <input
+                                        type="radio"
+                                        name="handler"
+                                        checked={selectedHandlerId === h.id}
+                                        onChange={() => setSelectedHandlerId(h.id)}
+                                    />
+                                    <div>
+                                        <div className="font-medium">{h.name}</div>
+                                        <div className="text-sm text-muted-foreground">
+                                            {h.group_title
+                                                ? `Assigned to: ${h.group_title}`
+                                                : "Not assigned"}
+                                        </div>
+                                    </div>
+                                </label>
+                            ))}
+                        </div>
+                    )}
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button
+                            disabled={!selectedHandlerId}
+                            onClick={assignGroup}
+                        >
+                            Assign
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
 

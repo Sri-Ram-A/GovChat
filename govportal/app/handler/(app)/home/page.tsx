@@ -1,45 +1,35 @@
 "use client"
 
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
+import { useEffect, useState } from "react"
+import { REQUEST } from "@/services/api"
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 
-export default function Home() {
-  const router = useRouter()
+export default function MyGroupPage() {
+  const [group, setGroup] = useState<any | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    REQUEST("GET", "handlers/assigned-group/")
+      .then(setGroup)
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) return <Skeleton className="h-48" />
+
+  if (!group || group.message) {
+    return <div className="text-muted-foreground">No group assigned</div>
+  }
 
   return (
-    <main className="relative w-full h-screen overflow-hidden bg-white">
-      {/* Background Video */}
-      <video autoPlay loop muted playsInline
-        className="absolute inset-0 w-full h-full object-fit z-0 bottom-1">
-        <source src="/admin_intro.mp4" type="video/mp4" />
-        Your browser does not support the video tag.
-      </video>
-
-      {/* UI Layer */}
-      <div className="relative z-20 w-full h-full">
-        
-        {/* Top Right: Admin Registration */}
-        <div className="absolute top-8 right-8">
-          <Button 
-            variant="outline" 
-            className="text-black border-black/40 hover:bg-black border-2 hover:text-white transition-all"
-            onClick={() => router.push("/admin/register")}
-          >
-            Admin Registration
-          </Button>
-        </div>
-
-        {/* Left Center: Register Department */}
-        <div className="absolute top-8 left-8">
-          <Button 
-            className="bg-black text-white hover:bg-gray-200 hover:text-black font-semibold border-2 shadow-2xl"
-            onClick={() => router.push("/admin/jurisdiction")}
-          >
-            Register Department
-          </Button>
-        </div>
-
-      </div>
-    </main>
+    <Card>
+      <CardHeader>
+        <CardTitle>{group.title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p>Status: {group.grouped_status}</p>
+        <p>Radius: {group.radius_meters}m</p>
+      </CardContent>
+    </Card>
   )
 }

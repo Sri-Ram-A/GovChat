@@ -35,4 +35,18 @@ class HandlerRegistrationSerializer(serializers.ModelSerializer):
         user = user_serializer.save()
         citizen_profile = HandlerProfile.objects.create(user=user,**validated_data)
         return citizen_profile
+class HandlerDepartmentsSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source="user.get_full_name")
+    email = serializers.EmailField(source="user.email")
+    group_id = serializers.IntegerField(source="group.id", allow_null=True)
+    group_title = serializers.CharField(source="group.title", allow_null=True)
 
+    class Meta:
+        model = HandlerProfile
+        fields = [
+            "id",
+            "name",
+            "email",
+            "group_id",
+            "group_title",
+        ]
