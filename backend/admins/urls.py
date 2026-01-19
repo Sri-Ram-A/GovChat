@@ -6,8 +6,8 @@ urlpatterns = [
     path("domains/", create.DomainAPIView.as_view()),
     path("departments/", create.DepartmentAPIView.as_view()),
 
-    path('register/', create.AdminRegistrationAPIView.as_view(), name='citizen-register'),
-    path('login/', create.AdminLoginAPIView.as_view(), name='citizen-register'),
+    path('register/', create.AdminRegistrationAPIView.as_view(), name='admin-register'),
+    path('login/', create.AdminLoginAPIView.as_view(), name='admin-login'),
     path('', create.AdminListAPIView.as_view(), name='admin-list'),
 
     path("complaints/",complaints.DepartmentListComplaints.as_view()),

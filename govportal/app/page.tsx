@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Moon, Sun, ArrowRight, UserCircle, ShieldCheck } from "lucide-react"
+import { Moon, Sun, ArrowRight, UserCircle, ShieldCheck,User } from "lucide-react"
 import { useTheme } from "next-themes"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
@@ -72,7 +72,7 @@ export default function HomePage() {
           {/* HERO */}
           <div className="space-y-3">
             <h1 className="text-5xl font-bold text-white">
-              E-Governance Portal
+              Our E-Governance Portal
             </h1>
             <p className="text-lg text-white/80">
               Report issues, engage with community, track resolutions
@@ -81,6 +81,7 @@ export default function HomePage() {
 
           {/* GLASS ACTION CARDS */}
           <div className="flex flex-col gap-5">
+
             {/* Citizen */}
             <Link href="/citizen/login">
               <div
@@ -148,6 +149,41 @@ export default function HomePage() {
                 </div>
               </div>
             </Link>
+
+            {/* Handler */}
+            <Link href="/handler/login">
+              <div
+                className="
+                  group cursor-pointer
+                  rounded-2xl
+                  bg-white/15
+                  backdrop-blur-xl
+                  border border-white/20
+                  shadow-xl
+                  p-6
+                  transition-all
+                  hover:bg-white/20
+                "
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-yellow-500/30">
+                      <User className="h-6 w-6 text-yellow-200" />
+                    </div>
+                    <div className="text-left">
+                      <h3 className="text-lg font-semibold text-white">
+                        Handler Portal
+                      </h3>
+                      <p className="text-sm text-white/70">
+                        Manage issues, and help the society
+                      </p>
+                    </div>
+                  </div>
+                  <ArrowRight className="h-5 w-5 text-white/70 transition-all group-hover:translate-x-1 group-hover:text-white" />
+                </div>
+              </div>
+            </Link>
+
           </div>
 
           {/* FOOTER TEXT */}
