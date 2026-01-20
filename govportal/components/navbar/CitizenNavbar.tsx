@@ -23,7 +23,7 @@ const navItems: NavItem[] = [
       { label: "File Complaint", href: "/citizen/post" },
       { label: "View Complaints", href: "/citizen/complaints" },
       { label: "View Map", href: "/map" },
-      { label: "Licenses", href: "/about" },
+      { label: "Need Help?", href: "/citizen/chat" },
     ],
   },
   {

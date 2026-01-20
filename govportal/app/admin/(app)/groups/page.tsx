@@ -252,7 +252,7 @@ export default function AdminGroupsPage() {
                                             </div>
                                         </div>
 
-                                        <div className="mt-4 flex items-center justify-between gap-3">
+                                        <div className="mt-4 grid grid-cols-2 gap-3">
                                             <Button variant="outline" size="sm" onClick={() => openGroup(g)}>
                                                 View complaints
                                             </Button>

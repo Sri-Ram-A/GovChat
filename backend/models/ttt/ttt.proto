@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package tts;
+
+service RetrieveContext {
+  rpc RetrieveText(QueryRequest) returns (TextResponse);
+}
+
+message QueryRequest {
+  string text = 1;
+}
+
+message TextResponse {
+  string text = 1;
+}
+
+

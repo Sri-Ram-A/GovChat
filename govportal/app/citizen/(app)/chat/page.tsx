@@ -51,11 +51,17 @@ export default function ChatPage() {
 
   const handleTranscript = useCallback(
     (data: any) => {
-      if (data.type === "transcript") {
-        addMessage("user", data.text, data.final)
-        if (data.final && data.text.trim()) {
-          setTimeout(() => addMessage("bot", `Echo: ${data.text}`), 300)
-        }
+      switch (data.type) {
+        case "transcript":
+          addMessage("user", data.text, data.final)
+          break
+
+        case "response":
+          addMessage("bot", data.text, true)
+          break
+
+        default:
+          console.warn("Unknown WS message:", data)
       }
     },
     [addMessage],

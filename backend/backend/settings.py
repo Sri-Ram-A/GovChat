@@ -141,6 +141,7 @@ IP = get_local_ip()
 STT_URL = IP + ":50051"
 TTS_URL = IP + ":50052"
 ITT_URL = IP + ":50053"
+TTT_URL = IP + ":50054"
 
 ###  JWT
 from datetime import timedelta 

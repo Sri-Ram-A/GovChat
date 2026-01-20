@@ -24,3 +24,5 @@ npm install ogl
 - Work assignment to the supervisors/handler
 - Heavily Refractor frontend (too much repeated code in that complaints-courtesy of gpt)
 - Should rename and organise backend , I have made it very cluttered will take care of that
+
+conda install conda-forge::faiss-gpu

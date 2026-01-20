@@ -8,6 +8,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE_DIR / "models" / "stt"))
 sys.path.insert(0, str(BASE_DIR / "models" / "tts"))
+sys.path.insert(0, str(BASE_DIR / "models" / "ttt"))
 sys.path.insert(0, str(BASE_DIR / "models" / "caption"))
 
 def main():

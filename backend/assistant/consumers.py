@@ -4,10 +4,12 @@ from channels.generic.websocket import WebsocketConsumer
 
 from .stt_client import STTClient
 from .tts_client import TTSClient
+from .ttt_client import TTTClient
 from django.conf import settings
 
 STT_URL = settings.STT_URL
 TTS_URL = settings.TTS_URL
+TTT_URL = settings.TTT_URL
 class ChatConsumer(WebsocketConsumer):
     def connect(self):
         self.accept()
@@ -16,6 +18,7 @@ class ChatConsumer(WebsocketConsumer):
         self.stt = STTClient(url=STT_URL,on_result=self.on_stt_result)
         # Text-to-Speech client
         self.tts = TTSClient(url=TTS_URL,on_audio=self.on_tts_audio)
+        self.ttt = TTTClient(url=TTT_URL)
 
     def receive(self, text_data=None, bytes_data=None):
         if bytes_data:
@@ -29,22 +32,41 @@ class ChatConsumer(WebsocketConsumer):
                 self.stt.start()
             elif msg.get("action") == "finalize":
                 self.stt.stop()
+            elif msg.get("type") == "text":
+                response_text = self.ttt.response(msg["text"])
+
+                self.send(text_data=json.dumps({
+                    "type": "response",
+                    "text": response_text
+                }))
+
 
     def on_stt_result(self, text: str, is_final: bool):
-        # Send transcript to frontend
+        # 1️⃣ Send STT transcript to frontend
         self.send(text_data=json.dumps({
             "type": "transcript",
             "text": text,
             "final": is_final
         }))
 
-        # Trigger TTS only on final text
-        if is_final and text.strip():
-            response_text = f"You said: {text}"
-            logger.info(f"[WS] Triggering TTS: {response_text}")
-            self.tts.start()
-            self.tts.send_text(response_text)
-            self.tts.stop()
+        # 2️⃣ Only act on final transcript
+        if not is_final or not text.strip():
+            return
+
+        # 3️⃣ Get response from TTT
+        response_text = self.ttt.response(text)
+        logger.info(f"[WS] TTT response: {response_text}")
+
+        # 4️⃣ Send TTT response as TEXT to frontend
+        self.send(text_data=json.dumps({
+            "type": "response",
+            "text": response_text
+        }))
+
+        # 5️⃣ Speak it using TTS
+        self.tts.start()
+        self.tts.send_text(response_text)
+        self.tts.stop()
 
     def on_tts_audio(self, pcm: bytes, is_final: bool):
         if pcm:

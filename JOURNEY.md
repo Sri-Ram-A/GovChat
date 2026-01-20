@@ -98,7 +98,10 @@ npm install -g pnpm
 
 * Kokoro TTS
   [https://huggingface.co/hexgrad/Kokoro-82M/blob/main/README.md](https://huggingface.co/hexgrad/Kokoro-82M/blob/main/README.md)
-
+- Numpy version must be less than 2
+```bash
+pip install "numpy<2.0"
+```
 ---
 
 # Moving STT and TTS to microservices
@@ -162,3 +165,28 @@ https://nextjs.org/docs/pages/building-your-application/routing/pages-and-layout
 # Dango Signals
 - Undestanding : https://www.freecodecamp.org/news/how-to-use-django-signals-in-your-projects/
 - https://www.geeksforgeeks.org/python/how-to-create-and-use-signals-in-django/
+
+
+# Setting up Sahana TTT in docker image:
+#!/bin/bash
+
+# Build the Docker image (optimized for size)
+docker build -t grpc-retrieval:latest .
+
+# Check image size
+docker images grpc-retrieval:latest
+
+# Run the container
+docker run -d --name grpc-retrieval-service -p 50054:50054 --restart unless-stopped grpc-retrieval:latest
+
+# View logs
+docker logs -f grpc-retrieval-service
+
+# Stop the container
+docker stop grpc-retrieval-service
+
+# Remove the container
+docker rm grpc-retrieval-service
+
+# Check in python
+python -c "import grpc; ch=grpc.insecure_channel('localhost:50054'); print('✓ gRPC port accessible' if ch else '✗ Failed'); ch.close()"
