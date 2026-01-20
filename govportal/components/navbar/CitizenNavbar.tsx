@@ -35,7 +35,7 @@ const navItems: NavItem[] = [
       { label: "Announcements", href: "/resources/announcements" },
     ],
   },
-  { label: "About", href: "/about" },
+  { label: "About Us", href: "/about-us" },
 ];
 
 export default function GovernmentNavbar() {

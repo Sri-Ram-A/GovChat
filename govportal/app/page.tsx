@@ -1,197 +1,297 @@
 "use client"
 
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Moon, Sun, ArrowRight, UserCircle, ShieldCheck,User } from "lucide-react"
-import { useTheme } from "next-themes"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 
-export default function HomePage() {
-  const { setTheme } = useTheme()
+import FuzzyText from "@/components/FuzzyText"
+import LightPillar from "@/components/LightPillar"
+import CardSwap, { Card } from "@/components/CardSwap"
+
+type Phase =
+  | "black"
+  | "fadeInHero"
+  | "heroIdle"
+  | "heroExit"
+  | "cardsFadeIn"
+  | "cardsIdle"
+  | "cardsExit"
+  | "navigate"
+
+export default function HeroPage() {
+  const router = useRouter()
+  const [phase, setPhase] = useState<Phase>("black")
+
+  const heroExitedRef = useRef(false)
+  const [showHeroNext, setShowHeroNext] = useState(false)
+  const [showCardsNext, setShowCardsNext] = useState(false)
+
+  /* ---------------- TIMINGS (LOCKED CORE) ---------------- */
+  const HERO_FADE_IN_DELAY = 1000
+  const HERO_FADE_IN_DURATION = 6000
+  const HERO_ZOOM_DURATION = 3000
+  const CARDS_FADE_DURATION = 2000
+
+  /* ---------------- BLACK → HERO FADE IN ---------------- */
+  useEffect(() => {
+    const t = setTimeout(() => setPhase("fadeInHero"), HERO_FADE_IN_DELAY)
+    return () => clearTimeout(t)
+  }, [])
+
+  /* ---------------- HERO NEXT BUTTON FADE-IN ---------------- */
+  useEffect(() => {
+    if (phase === "heroIdle") {
+      const t = setTimeout(() => setShowHeroNext(true), 2000)
+      return () => clearTimeout(t)
+    }
+    setShowHeroNext(false)
+  }, [phase])
+
+  /* ---------------- HERO NEXT ---------------- */
+  const onHeroNext = () => {
+    if (phase !== "heroIdle" || heroExitedRef.current) return
+    heroExitedRef.current = true
+    setPhase("heroExit")
+
+    setTimeout(() => {
+      setPhase("cardsFadeIn")
+    }, HERO_ZOOM_DURATION)
+  }
+
+  /* ---------------- CARDS NEXT BUTTON DELAY ---------------- */
+  useEffect(() => {
+    if (phase === "cardsIdle") {
+      const t = setTimeout(() => setShowCardsNext(true), 5000)
+      return () => clearTimeout(t)
+    }
+    setShowCardsNext(false)
+  }, [phase])
+
+  /* ---------------- CARDS NEXT ---------------- */
+  const onCardsNext = () => {
+    if (phase !== "cardsIdle") return
+    setPhase("cardsExit")
+
+    setTimeout(() => {
+      setPhase("navigate")
+    }, CARDS_FADE_DURATION)
+  }
+
+  /* ---------------- NAVIGATION ---------------- */
+  useEffect(() => {
+    if (phase === "navigate") {
+      router.push("/main")
+    }
+  }, [phase, router])
 
   return (
-    <div className="relative min-h-screen overflow-hidden text-foreground">
-
-      {/* FULLSCREEN VIDEO BACKGROUND */}
-      <div className="absolute inset-0 -z-10">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
-          className="
-            h-full w-full
-            object-cover
-            opacity-60
-          "
-        >
-          <source src="/introbgMain.mp4" type="video/mp4" />
-        </video>
-
-        {/* soft overlay to improve text contrast */}
-        <div className="absolute inset-0 bg-black/30" />
+    <div className="relative h-screen w-screen overflow-hidden bg-black text-white">
+      {/* ---------------- BACKGROUND (PERSISTENT) ---------------- */}
+      <div
+        className={`
+          absolute inset-0 transition-opacity ease-in-out
+          ${
+            phase === "black"
+              ? "opacity-0"
+              : phase === "fadeInHero"
+              ? "opacity-100 duration-6000"
+              : phase === "cardsExit"
+              ? "opacity-0 duration-2000"
+              : "opacity-100"
+          }
+        `}
+      >
+        <LightPillar
+          topColor="#00d5ff"
+          bottomColor="#0b0986"
+          intensity={0.9}
+          rotationSpeed={0.8}
+          glowAmount={0.002}
+          pillarWidth={6}
+          pillarHeight={0.7}
+          noiseIntensity={0.7}
+          pillarRotation={41}
+          interactive={false}
+          mixBlendMode="normal"
+          quality="high"
+        />
       </div>
 
-      {/* NAVBAR */}
-      <nav className="relative z-20 px-8 py-6">
-        <div className="mx-auto flex max-w-7xl items-center justify-between">
-          <div className="text-2xl font-bold">GOVCHAT</div>
+      {/* ---------------- HERO TEXT ---------------- */}
+      <div
+        className={`
+          absolute inset-0 flex items-center justify-center
+          transition-all ease-in-out
+          ${
+            phase === "black"
+              ? "opacity-0"
+              : phase === "fadeInHero"
+              ? "opacity-100 duration-6000"
+              : phase === "heroIdle"
+              ? "opacity-100"
+              : phase === "heroExit"
+              ? "opacity-0 scale-[12] duration-3000"
+              : "opacity-0 scale-[12]"
+          }
+        `}
+        onTransitionEnd={() => {
+          if (phase === "fadeInHero") setPhase("heroIdle")
+        }}
+      >
+        <FuzzyText baseIntensity={0.18} hoverIntensity={0.45} enableHover>
+          GovtChat
+        </FuzzyText>
+      </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full bg-white/10 backdrop-blur-md"
-              >
-                <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              </Button>
-            </DropdownMenuTrigger>
-
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setTheme("light")}>
-                Light
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("dark")}>
-                Dark
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("system")}>
-                System
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+      {/* ---------------- HERO NEXT BUTTON ---------------- */}
+      {phase === "heroIdle" && (
+        <div
+          className={`
+            absolute bottom-10 left-1/2 -translate-x-1/2 z-20
+            transition-opacity duration-700
+            ${showHeroNext ? "opacity-100" : "opacity-0"}
+          `}
+        >
+          <button
+            onClick={onHeroNext}
+            className="px-10 py-3 rounded-full bg-white text-black text-lg font-medium hover:bg-white/90"
+          >
+            Next
+          </button>
         </div>
-      </nav>
+      )}
 
-      {/* MAIN CONTENT */}
-      <main className="relative z-10 flex min-h-[calc(100vh-120px)] items-center justify-center">
-        <div className="mx-auto max-w-xl space-y-10 px-6 text-center">
-
-          {/* HERO */}
-          <div className="space-y-3">
-            <h1 className="text-5xl font-bold text-white">
-              Our E-Governance Portal
-            </h1>
-            <p className="text-lg text-white/80">
-              Report issues, engage with community, track resolutions
+      {/* ---------------- CARD SWAP SECTION ---------------- */}
+      <div
+        className={`
+          absolute inset-0 flex items-center
+          transition-opacity ease-in-out
+          ${
+            phase === "cardsFadeIn"
+              ? "opacity-100 duration-2000"
+              : phase === "cardsIdle"
+              ? "opacity-100"
+              : phase === "cardsExit"
+              ? "opacity-0 duration-2000"
+              : "opacity-0 pointer-events-none"
+          }
+        `}
+        onTransitionEnd={() => {
+          if (phase === "cardsFadeIn") setPhase("cardsIdle")
+        }}
+      >
+        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-16 px-12">
+          {/* LEFT TEXT */}
+          <div className="flex flex-col justify-center space-y-6">
+            <h2 className="text-4xl font-semibold">
+              A Smarter Way to Engage with Government
+            </h2>
+            <p className="text-white/70 text-lg">
+              GovtChat brings AI-powered assistance, transparent tracking, and
+              multilingual access together into a single citizen-first portal.
             </p>
           </div>
 
-          {/* GLASS ACTION CARDS */}
-          <div className="flex flex-col gap-5">
-
-            {/* Citizen */}
-            <Link href="/citizen/login">
-              <div
-                className="
-                  group cursor-pointer
-                  rounded-2xl
-                  bg-white/15
-                  backdrop-blur-xl
-                  border border-white/20
-                  shadow-xl
-                  p-6
-                  transition-all
-                  hover:bg-white/20
-                "
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/30">
-                      <UserCircle className="h-6 w-6 text-blue-200" />
-                    </div>
-                    <div className="text-left">
-                      <h3 className="text-lg font-semibold text-white">
-                        Continue as Citizen
-                      </h3>
-                      <p className="text-sm text-white/70">
-                        Report issues, join discussions, track progress
-                      </p>
-                    </div>
+          {/* RIGHT CARD SWAP */}
+          <div className="relative h-[600px]">
+            <CardSwap
+              cardDistance={60}
+              verticalDistance={80}
+              delay={3000}
+              pauseOnHover={false}
+            >
+              {/* CARD 1 */}
+              <Card>
+                <div className="relative h-full w-full overflow-hidden rounded-xl">
+                  <img
+                    src="/herocontainer/1.png"
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                  <div className="absolute bottom-4 left-4 right-4 rounded-lg bg-black/50 backdrop-blur-md p-4">
+                    <h3 className="text-xl font-semibold">
+                      Smart Complaint Routing
+                    </h3>
+                    <p className="text-white/80 mt-1">
+                      Upload a photo and let AI route the issue automatically.
+                    </p>
                   </div>
-                  <ArrowRight className="h-5 w-5 text-white/70 transition-all group-hover:translate-x-1 group-hover:text-white" />
                 </div>
-              </div>
-            </Link>
+              </Card>
 
-            {/* Admin */}
-            <Link href="/admin/home">
-              <div
-                className="
-                  group cursor-pointer
-                  rounded-2xl
-                  bg-white/15
-                  backdrop-blur-xl
-                  border border-white/20
-                  shadow-xl
-                  p-6
-                  transition-all
-                  hover:bg-white/20
-                "
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/30">
-                      <ShieldCheck className="h-6 w-6 text-emerald-200" />
-                    </div>
-                    <div className="text-left">
-                      <h3 className="text-lg font-semibold text-white">
-                        Admin Portal
-                      </h3>
-                      <p className="text-sm text-white/70">
-                        Manage issues, resolve tickets, update status
-                      </p>
-                    </div>
+              {/* CARD 2 */}
+              <Card>
+                <div className="relative h-full w-full overflow-hidden rounded-xl">
+                  <img
+                    src="/herocontainer/2.png"
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                  <div className="absolute bottom-4 left-4 right-4 rounded-lg bg-black/50 backdrop-blur-md p-4">
+                    <h3 className="text-xl font-semibold">
+                      Live Geo-Tagged Tracking
+                    </h3>
+                    <p className="text-white/80 mt-1">
+                      Track complaint status on an interactive map in real time.
+                    </p>
                   </div>
-                  <ArrowRight className="h-5 w-5 text-white/70 transition-all group-hover:translate-x-1 group-hover:text-white" />
                 </div>
-              </div>
-            </Link>
+              </Card>
 
-            {/* Handler */}
-            <Link href="/handler/login">
-              <div
-                className="
-                  group cursor-pointer
-                  rounded-2xl
-                  bg-white/15
-                  backdrop-blur-xl
-                  border border-white/20
-                  shadow-xl
-                  p-6
-                  transition-all
-                  hover:bg-white/20
-                "
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-yellow-500/30">
-                      <User className="h-6 w-6 text-yellow-200" />
-                    </div>
-                    <div className="text-left">
-                      <h3 className="text-lg font-semibold text-white">
-                        Handler Portal
-                      </h3>
-                      <p className="text-sm text-white/70">
-                        Manage issues, and help the society
-                      </p>
-                    </div>
+              {/* CARD 3 */}
+              <Card>
+                <div className="relative h-full w-full overflow-hidden rounded-xl">
+                  <img
+                    src="/herocontainer/3.png"
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                  <div className="absolute bottom-4 left-4 right-4 rounded-lg bg-black/50 backdrop-blur-md p-4">
+                    <h3 className="text-xl font-semibold">
+                      Kannada Voice Assistance
+                    </h3>
+                    <p className="text-white/80 mt-1">
+                      Navigate the portal using spoken Kannada.
+                    </p>
                   </div>
-                  <ArrowRight className="h-5 w-5 text-white/70 transition-all group-hover:translate-x-1 group-hover:text-white" />
                 </div>
-              </div>
-            </Link>
+              </Card>
 
+              {/* CARD 4 */}
+              <Card>
+                <div className="relative h-full w-full overflow-hidden rounded-xl">
+                  <img
+                    src="/herocontainer/4.png"
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                  <div className="absolute bottom-4 left-4 right-4 rounded-lg bg-black/50 backdrop-blur-md p-4">
+                    <h3 className="text-xl font-semibold">
+                      Public Services AI
+                    </h3>
+                    <p className="text-white/80 mt-1">
+                      Get clear answers about schemes and documents.
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            </CardSwap>
           </div>
-
-          {/* FOOTER TEXT */}
-          <p className="text-sm text-white/60">
-            Join thousands of citizens improving their community
-          </p>
         </div>
-      </main>
+      </div>
+
+      {/* ---------------- FINAL NEXT BUTTON ---------------- */}
+      {phase === "cardsIdle" && (
+        <div
+          className={`
+            absolute bottom-10 left-1/2 -translate-x-1/2 z-20
+            transition-opacity duration-700
+            ${showCardsNext ? "opacity-100" : "opacity-0"}
+          `}
+        >
+          <button
+            onClick={onCardsNext}
+            className="px-10 py-3 rounded-full bg-white text-black text-lg font-medium hover:bg-white/90"
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   )
 }

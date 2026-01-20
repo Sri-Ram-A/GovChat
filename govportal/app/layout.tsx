@@ -21,9 +21,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
+  main,
 }: Readonly<{
   children: React.ReactNode;
+  main: React.ReactNode;
 }>) {
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
@@ -36,6 +39,8 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          {main}
+
         </ThemeProvider>
         <Toaster richColors position="top-center" expand={true} closeButton 
           duration={5000} />

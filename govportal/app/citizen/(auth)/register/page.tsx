@@ -1,29 +1,55 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
-import { CalendarIcon, Loader2, UserPlus, Lock, Phone, MapPin, User, Shield, ArrowRight, } from "lucide-react";
+import {
+  CalendarIcon,
+  Loader2,
+  UserPlus,
+  Lock,
+  Phone,
+  MapPin,
+  User,
+  Shield,
+  ArrowRight,
+  Eye,
+  EyeOff,
+} from "lucide-react";
+
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
+
 import FormField from "@/components/reusables/forms/FormField";
 import FormSection from "@/components/reusables/forms/FormSection";
 
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { RegisterForm } from "@/types/index";
-import { REQUEST } from "@/services/api"; 
+import { REQUEST } from "@/services/api";
 import { setStoredToken } from "@/services/auth";
+
+import ColorBends from "@/components/ColorBends";
 
 type Errors = Record<string, string>;
 
 export default function RegisterPage() {
   const router = useRouter();
+
+  const [isVisible, setIsVisible] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
+
   const [form, setForm] = useState<RegisterForm>({
     username: "",
     email: "",
@@ -42,6 +68,13 @@ export default function RegisterPage() {
 
   const [errors, setErrors] = useState<Errors>({});
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword2, setShowPassword2] = useState(false);
+
+  /* ---------------- PAGE FADE-IN ---------------- */
+  useEffect(() => {
+    requestAnimationFrame(() => setIsVisible(true));
+  }, []);
 
   const handleChange = (field: keyof RegisterForm, value: string | Date | undefined) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -50,17 +83,24 @@ export default function RegisterPage() {
 
   const validateForm = (): Errors => {
     const newErrors: Errors = {};
-    if (!form.username || form.username.length < 3) newErrors.username = "Username must be at least 3 characters";
-    if (!form.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) newErrors.email = "Valid email is required";
-    if (!form.password || form.password.length < 8) newErrors.password = "Password must be at least 8 characters";
-    if (form.password !== form.password2) newErrors.password2 = "Passwords do not match";
-    if (form.phone_number && !/^\+?[\d\s-]{10,}$/.test(form.phone_number)) newErrors.phone_number = "Invalid phone number";
-    if (form.date_of_birth && form.date_of_birth > new Date()) newErrors.date_of_birth = "Date cannot be in the future";
+    if (!form.username || form.username.length < 3)
+      newErrors.username = "Username must be at least 3 characters";
+    if (!form.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
+      newErrors.email = "Valid email is required";
+    if (!form.password || form.password.length < 8)
+      newErrors.password = "Password must be at least 8 characters";
+    if (form.password !== form.password2)
+      newErrors.password2 = "Passwords do not match";
+    if (form.phone_number && !/^\+?[\d\s-]{10,}$/.test(form.phone_number))
+      newErrors.phone_number = "Invalid phone number";
+    if (form.date_of_birth && form.date_of_birth > new Date())
+      newErrors.date_of_birth = "Date cannot be in the future";
     return newErrors;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     const validationErrors = validateForm();
     if (Object.keys(validationErrors).length) {
       setErrors(validationErrors);
@@ -85,7 +125,9 @@ export default function RegisterPage() {
         city: form.city,
         state_province: form.state_province,
         postal_code: form.postal_code,
-        date_of_birth: form.date_of_birth ? form.date_of_birth.toISOString().slice(0, 10) : undefined,
+        date_of_birth: form.date_of_birth
+          ? form.date_of_birth.toISOString().slice(0, 10)
+          : undefined,
       };
 
       const res = await REQUEST("POST", "citizens/register/", payload);
@@ -93,10 +135,12 @@ export default function RegisterPage() {
       if (res?.access) {
         setStoredToken(res.access);
         toast.success("Account created — welcome! 🎉");
-        router.push("/citizen/home");
+        setIsExiting(true);
+        setTimeout(() => router.push("/citizen/home"), 300);
       } else {
         toast.success("Account created — you can now sign in.");
-        router.push("/");
+        setIsExiting(true);
+        setTimeout(() => router.push("/citizen/login"), 300);
       }
     } catch (err: any) {
       toast.error(err?.message || "Registration failed. Please try again.");
@@ -107,12 +151,51 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="relative min-h-screen min-w-screen overflow-hidden flex items-center justify-center p-4 lg:p-8 bg-linear-to-br from-background to-muted dark:from-slate-900">
+    <div
+      className={`
+        relative min-h-screen w-screen overflow-hidden
+        flex items-center justify-center p-4 lg:p-8
+        transition-all duration-300 ease-out
+        ${
+          isExiting
+            ? "opacity-0 scale-[0.98]"
+            : isVisible
+            ? "opacity-100"
+            : "opacity-0"
+        }
+      `}
+    >
+      {/* ---------------- COLOR BENDS BACKGROUND ---------------- */}
+      <div className="absolute inset-0 -z-10">
+        <ColorBends
+          colors={["#ff5c7a", "#8a5cff", "#00ffd1"]}
+          rotation={13}
+          speed={0.57}
+          scale={1.4}
+          frequency={2.7}
+          warpStrength={1}
+          mouseInfluence={1.2}
+          parallax={1}
+          noise={0}
+          transparent
+          autoRotate={5}
+        />
+      </div>
 
-      <Card className="relative w-full max-w-7xl glass-card shadow-xl border dark:border-white/6 overflow-hidden">
-        <CardHeader className="text-center py-3 bg-linear-to-b from-white/5 via-transparent dark:from-black/5">
-          <CardTitle className="flex items-center justify-center gap-3 text-2xl lg:text-2xl font-display font-bold">
-            <Shield className="h-8 w-8 text-indigo-500 shrink-0" />
+      {/* ---------------- TRANSLUCENT CARD ---------------- */}
+      <Card
+        className="
+          relative w-full max-w-7xl
+          bg-white/75 dark:bg-white/10
+          backdrop-blur-xl
+          border border-black/10 dark:border-white/15
+          shadow-2xl
+          overflow-hidden
+        "
+      >
+        <CardHeader className="text-center py-3 bg-linear-to-b from-white/10 via-transparent dark:from-black/10">
+          <CardTitle className="flex items-center justify-center gap-3 text-2xl font-bold">
+            <Shield className="h-8 w-8 text-indigo-500" />
             <span className="bg-linear-to-r from-indigo-400 to-emerald-300 bg-clip-text text-transparent">
               Join the Community
             </span>
@@ -147,25 +230,49 @@ export default function RegisterPage() {
                   error={errors.email}
                 />
 
-                <FormField
-                  id="password"
-                  label="Password *"
-                  type="password"
-                  value={form.password}
-                  onChange={(v) => handleChange("password", v)}
-                  placeholder="••••••••"
-                  error={errors.password}
-                />
+                <div className="relative">
+                  <FormField
+                    id="password"
+                    label="Password *"
+                    type={showPassword ? "text" : "password"}
+                    value={form.password}
+                    onChange={(v) => handleChange("password", v)}
+                    placeholder="••••••••"
+                    error={errors.password}
+                  />
 
-                <FormField
-                  id="password2"
-                  label="Confirm Password *"
-                  type="password"
-                  value={form.password2}
-                  onChange={(v) => handleChange("password2", v)}
-                  placeholder="••••••••"
-                  error={errors.password2}
-                />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 translate-y-[0.4rem] text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+
+                  </button>
+                </div>
+
+
+                <div className="relative">
+                  <FormField
+                    id="password2"
+                    label="Confirm Password *"
+                    type={showPassword2 ? "text" : "password"}
+                    value={form.password2}
+                    onChange={(v) => handleChange("password2", v)}
+                    placeholder="••••••••"
+                    error={errors.password2}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword2((v) => !v)}
+                    className="absolute right-3 top-1/2 translate-y-[0.4rem] text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword2 ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+
+                  </button>
+                </div>
+
               </div>
             </FormSection>
 

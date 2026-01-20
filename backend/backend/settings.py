@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',###
     'drf_spectacular',###
     'schema_viewer',###
+    'django_extensions'
 ]
 ###
 REST_FRAMEWORK = {

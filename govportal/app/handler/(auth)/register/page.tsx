@@ -3,11 +3,22 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarIcon, Loader2, UserPlus, Lock, Phone, MapPin, User, Shield, ArrowRight, Check, ChevronsUpDown } from "lucide-react";
+import {
+  Loader2,
+  UserPlus,
+  Lock,
+  Phone,
+  User,
+  ArrowRight,
+  Check,
+  ChevronsUpDown,
+} from "lucide-react";
+
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import FormField from "@/components/reusables/forms/FormField";
 import FormSection from "@/components/reusables/forms/FormSection";
+
 import {
   Command,
   CommandEmpty,
@@ -15,22 +26,30 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command"
+} from "@/components/ui/command";
+
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@/components/ui/popover";
+
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Department, RegisterForm } from "@/types/index";
 import { REQUEST } from "@/services/api";
 import { setStoredToken } from "@/services/auth";
 
+import ColorBends from "@/components/ColorBends";
+
 type Errors = Record<string, string>;
 
 export default function RegisterPage() {
   const router = useRouter();
+
+  const [isVisible, setIsVisible] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
+
   const [form, setForm] = useState<RegisterForm>({
     username: "",
     email: "",
@@ -42,30 +61,55 @@ export default function RegisterPage() {
     department: undefined,
     designation: "",
   });
-  const [departments, setDepartments] = useState<Department[]>([])
+
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [errors, setErrors] = useState<Errors>({});
   const [loading, setLoading] = useState(false);
   const [deptID, setDeptID] = useState<number | undefined>(undefined);
-  const [open, setOpen] = useState(false)
-  const [value, setValue] = useState("")
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState("");
 
-  const handleChange = (field: keyof RegisterForm, value: string | Date | undefined) => {
+  /* ---------------- PAGE FADE-IN ---------------- */
+  useEffect(() => {
+    requestAnimationFrame(() => setIsVisible(true));
+  }, []);
+
+  /* ---------------- FETCH DEPARTMENTS ---------------- */
+  useEffect(() => {
+    REQUEST("GET", "admins/departments/")
+      .then(setDepartments)
+      .catch(console.error);
+  }, []);
+
+  const handleChange = (
+    field: keyof RegisterForm,
+    value: string | Date | undefined
+  ) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
   const validateForm = (): Errors => {
     const newErrors: Errors = {};
-    if (!form.username || form.username.length < 3) newErrors.username = "Username must be at least 3 characters";
-    if (!form.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) newErrors.email = "Valid email is required";
-    if (!form.password || form.password.length < 8) newErrors.password = "Password must be at least 8 characters";
-    if (form.password !== form.password2) newErrors.password2 = "Passwords do not match";
-    if (form.phone_number && !/^\+?[\d\s-]{10,}$/.test(form.phone_number)) newErrors.phone_number = "Invalid phone number";
+    if (!form.username || form.username.length < 3)
+      newErrors.username = "Username must be at least 3 characters";
+    if (!form.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
+      newErrors.email = "Valid email is required";
+    if (!form.password || form.password.length < 8)
+      newErrors.password = "Password must be at least 8 characters";
+    if (form.password !== form.password2)
+      newErrors.password2 = "Passwords do not match";
+    if (
+      form.phone_number &&
+      !/^\+?[\d\s-]{10,}$/.test(form.phone_number)
+    )
+      newErrors.phone_number = "Invalid phone number";
     return newErrors;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     const validationErrors = validateForm();
     if (Object.keys(validationErrors).length) {
       setErrors(validationErrors);
@@ -94,10 +138,12 @@ export default function RegisterPage() {
       if (res?.access) {
         setStoredToken(res.access);
         toast.success("Account created — welcome! 🎉");
-        router.push("/handler/home");
+        setIsExiting(true);
+        setTimeout(() => router.push("/handler/home"), 300);
       } else {
         toast.success("Account created — you can now sign in.");
-        router.push("/");
+        setIsExiting(true);
+        setTimeout(() => router.push("/"), 300);
       }
     } catch (err: any) {
       toast.error(err?.message || "Registration failed. Please try again.");
@@ -106,28 +152,55 @@ export default function RegisterPage() {
       setLoading(false);
     }
   };
-  const fetchDepartments = async () => {
-    try {
-      const res = await REQUEST("GET", "admins/departments/")
-      setDepartments(res || [])
-    } catch (err) {
-      console.error("Failed to fetch departments:", err)
-    }
-  }
-
-  useEffect(() => {
-    fetchDepartments()
-  }, [])
-
 
   return (
-    <div className="relative min-h-screen min-w-screen overflow-hidden flex items-center justify-center p-4 lg:p-8 bg-linear-to-br from-background to-muted dark:from-slate-900">
+    <div
+      className={`
+        relative min-h-screen w-screen overflow-hidden
+        flex items-center justify-center p-4 lg:p-8
+        transition-all duration-300 ease-out
+        ${
+          isExiting
+            ? "opacity-0 scale-[0.98]"
+            : isVisible
+            ? "opacity-100"
+            : "opacity-0"
+        }
+      `}
+    >
+      {/* ---------------- COLOR BENDS BACKGROUND ---------------- */}
+      <div className="absolute inset-0 -z-10">
+        <ColorBends
+          colors={["#ff5c7a", "#8a5cff", "#00ffd1"]}
+          rotation={13}
+          speed={0.57}
+          scale={1.4}
+          frequency={2.7}
+          warpStrength={1}
+          mouseInfluence={1.2}
+          parallax={1}
+          noise={0}
+          transparent
+          autoRotate={5}
+        />
+      </div>
 
-      <Card className="relative w-full max-w-7xl glass-card shadow-xl border dark:border-white/6 overflow-hidden">
-
+      {/* ---------------- FORM CARD ---------------- */}
+      <Card
+        className="
+          relative w-full max-w-7xl
+          bg-white/70 dark:bg-white/10
+          backdrop-blur-xl
+          border border-black/10 dark:border-white/10
+          shadow-xl
+        "
+      >
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <FormSection title="Account Information" icon={<Lock className="h-4 w-4 text-primary" />}>
+            <FormSection
+              title="Account Information"
+              icon={<Lock className="h-4 w-4 text-primary" />}
+            >
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <FormField
                   id="username"
@@ -147,7 +220,7 @@ export default function RegisterPage() {
                   placeholder="muthu_kumar@example.com"
                   error={errors.email}
                 />
-
+              
                 <FormField
                   id="password"
                   label="Password *"
@@ -168,8 +241,7 @@ export default function RegisterPage() {
                   error={errors.password2}
                 />
               </div>
-            </FormSection>
-
+           </FormSection>
             <FormSection title="Personal Information" icon={<User className="h-4 w-4 text-indigo-600" />}>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 <FormField id="first_name" label="First Name" value={form.first_name} onChange={(v) => handleChange("first_name", v)} placeholder="John" />
@@ -300,3 +372,4 @@ export default function RegisterPage() {
     </div>
   );
 }
+

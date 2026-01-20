@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { REQUEST } from "@/services/api";
 import { setStoredToken } from "@/services/auth";
 import { Loader2, Lock, User } from "lucide-react";
+import ColorBends from "@/components/ColorBends";
 
 export default function LoginPage() {
   const [isVisible, setIsVisible] = useState(false)
@@ -20,10 +21,9 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [form, setForm] = useState({ username: "", password: "" });
 
-    React.useEffect(() => {
+  React.useEffect(() => {
     requestAnimationFrame(() => setIsVisible(true))
   }, [])
-
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,21 +31,19 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // adjust route if your backend expects another path
-      const res = await REQUEST("POST", "handlers/login/", { username: form.username, password: form.password });
-      // Expect token in res.access or res.token — adjust accordingly
+      const res = await REQUEST("POST", "handlers/login/", {
+        username: form.username,
+        password: form.password
+      });
+
       if (res?.access) {
-        // Store the access token 
-        setStoredToken(res.access);        
+        setStoredToken(res.access);
         toast.success("Welcome back!");
         setIsExiting(true)
         setTimeout(() => {
-          router.push("/handler/home")  
+          router.push("/handler/home")
         }, 300)
-
       } else {
-        // No token received - this should NOT happen on successful login
-        console.error("Login response missing token:", res);
         throw new Error("Login failed - no token received");
       }
     } catch (err: any) {
@@ -71,23 +69,23 @@ export default function LoginPage() {
         }
       `}
     >
-
-        {/* FULLSCREEN VIDEO BACKGROUND */}
+      {/* COLOR BENDS BACKGROUND */}
       <div className="absolute inset-0 -z-10">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
-          className="h-full w-full object-cover opacity-90"
-        >
-          <source src="/background1.mp4" type="video/mp4" />
-        </video>
-
+        <ColorBends
+          colors={["#ff5c7a", "#8a5cff", "#00ffd1"]}
+          rotation={13}
+          speed={0.57}
+          scale={1.4}
+          frequency={2.7}
+          warpStrength={1}
+          mouseInfluence={1.2}
+          parallax={1}
+          noise={0}
+          transparent
+          autoRotate={5}
+        />
         <div className="absolute inset-0 bg-black/15" />
       </div>
-
 
       <Card
         className="
@@ -98,7 +96,6 @@ export default function LoginPage() {
           shadow-2xl
         "
       >
-
         <CardHeader className="text-center">
           <Lock className="h-6 w-6 text-blue-600" />
           <CardTitle className="text-2xl">Welcome Back</CardTitle>
@@ -143,19 +140,16 @@ export default function LoginPage() {
           <p className="text-sm text-center mt-4">
             Don't have an account?{" "}
             <span
-            onClick={() => {
-              setIsExiting(true)
-              setTimeout(() => {
-                router.push("/handler/register")
-              }, 300)
-            }}
-            className="text-primary hover:underline cursor-pointer"
+              onClick={() => {
+                setIsExiting(true)
+                setTimeout(() => {
+                  router.push("/handler/register")
+                }, 300)
+              }}
+              className="text-primary hover:underline cursor-pointer"
             >
-
-            Register
-
+              Register
             </span>
-
           </p>
         </CardContent>
       </Card>
