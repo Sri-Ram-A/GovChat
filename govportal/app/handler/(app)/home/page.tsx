@@ -36,7 +36,7 @@ export default function MyGroupPage() {
         <CardContent className="space-y-3">
           <Skeleton className="h-4 w-1/3" />
           <Skeleton className="h-4 w-1/2" />
-          <Skeleton className="h-[240px] w-full" />
+          <Skeleton className="h-60 w-full" />
         </CardContent>
       </Card>
     )

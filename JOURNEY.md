@@ -190,3 +190,11 @@ docker rm grpc-retrieval-service
 
 # Check in python
 python -c "import grpc; ch=grpc.insecure_channel('localhost:50054'); print('✓ gRPC port accessible' if ch else '✗ Failed'); ch.close()"
+
+# Start the container again
+docker start grpc-retrieval-service
+
+# to see live logs
+docker logs -f grpc-retrieval-service
+
+## Finally decided to package kokoro tts itself..since that is the most shit
