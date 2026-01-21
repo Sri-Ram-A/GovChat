@@ -1,6 +1,6 @@
 run backend like this.
 ```bash
-python manage.py runserver_plus --cert-file ../localhost+3.pem --key-file ../localhost+3-key.pem 0.0.0.0:8000
+python manage.py runserver_plus --cert-file ../keys/localhost+3.pem --key-file ../keys/localhost+3-key.pem 0.0.0.0:8000
 ```
 frontend is as usual
 

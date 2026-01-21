@@ -1,197 +1,290 @@
-"use client"
+'use client'
 
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Moon, Sun, ArrowRight, UserCircle, ShieldCheck,User } from "lucide-react"
-import { useTheme } from "next-themes"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { ChevronDown, Zap, Shield, Globe } from 'lucide-react'
+import LightPillar from '@/components/decor/LightPillar'
 
-export default function HomePage() {
-  const { setTheme } = useTheme()
+type Phase = 'black' | 'fadeInHero' | 'heroIdle' | 'heroExit' | 'cardsFadeIn' | 'cardsIdle' | 'cardsExit' | 'navigate'
+
+export default function HeroPage() {
+  const router = useRouter()
+  const [phase, setPhase] = useState<Phase>('black')
+  const [showHeroNext, setShowHeroNext] = useState(false)
+  const [showCardsNext, setShowCardsNext] = useState(false)
+  const heroExitedRef = useRef(false)
+
+  const HERO_FADE_IN_DELAY = 1000
+  const HERO_FADE_IN_DURATION = 6000
+  const HERO_ZOOM_DURATION = 3000
+  const CARDS_FADE_DURATION = 2000
+
+  useEffect(() => {
+    const t = setTimeout(() => setPhase('fadeInHero'), HERO_FADE_IN_DELAY)
+    return () => clearTimeout(t)
+  }, [])
+
+  useEffect(() => {
+    if (phase === 'heroIdle') {
+      const t = setTimeout(() => setShowHeroNext(true), 2000)
+      return () => clearTimeout(t)
+    }
+    setShowHeroNext(false)
+  }, [phase])
+
+  const onHeroNext = () => {
+    if (phase !== 'heroIdle' || heroExitedRef.current) return
+    heroExitedRef.current = true
+    setPhase('heroExit')
+    setTimeout(() => {
+      setPhase('cardsFadeIn')
+    }, HERO_ZOOM_DURATION)
+  }
+
+  useEffect(() => {
+    if (phase === 'cardsIdle') {
+      const t = setTimeout(() => setShowCardsNext(true), 5000)
+      return () => clearTimeout(t)
+    }
+    setShowCardsNext(false)
+  }, [phase])
+
+  const onCardsNext = () => {
+    if (phase !== 'cardsIdle') return
+    setPhase('cardsExit')
+    setTimeout(() => {
+      setPhase('navigate')
+    }, CARDS_FADE_DURATION)
+  }
+
+  useEffect(() => {
+    if (phase === 'navigate') {
+      router.push('/main')
+    }
+  }, [phase, router])
 
   return (
-    <div className="relative min-h-screen overflow-hidden text-foreground">
-
-      {/* FULLSCREEN VIDEO BACKGROUND */}
-      <div className="absolute inset-0 -z-10">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
-          className="
-            h-full w-full
-            object-cover
-            opacity-60
-          "
-        >
-          <source src="/introbgMain.mp4" type="video/mp4" />
-        </video>
-
-        {/* soft overlay to improve text contrast */}
-        <div className="absolute inset-0 bg-black/30" />
+    <div className="relative h-screen w-screen overflow-hidden bg-black text-white">
+      {/* LIGHTPILLAR BACKGROUND */}
+      <div
+        className={`
+          absolute inset-0 transition-opacity ease-in-out
+          ${phase === 'black'
+            ? 'opacity-0'
+            : phase === 'fadeInHero'
+              ? 'opacity-100 duration-6000'
+              : phase === 'cardsExit'
+                ? 'opacity-0 duration-2000'
+                : 'opacity-100'
+          }
+        `}
+      >
+        <LightPillar
+          topColor="#5227FF"
+          bottomColor="#FF9FFC"
+          intensity={1}
+          rotationSpeed={0.3}
+          glowAmount={0.002}
+          pillarWidth={3}
+          pillarHeight={0.4}
+          noiseIntensity={0.5}
+          pillarRotation={25}
+          interactive={false}
+          mixBlendMode="screen"
+          quality="high"
+        />
       </div>
 
-      {/* NAVBAR */}
-      <nav className="relative z-20 px-8 py-6">
-        <div className="mx-auto flex max-w-7xl items-center justify-between">
-          <div className="text-2xl font-bold">GOVCHAT</div>
+      {/* HERO TEXT */}
+      <div
+        className={`
+          absolute inset-0 flex items-center justify-center
+          transition-all ease-in-out
+          ${phase === 'black'
+            ? 'opacity-0'
+            : phase === 'fadeInHero'
+              ? 'opacity-100 duration-6000'
+              : phase === 'heroIdle'
+                ? 'opacity-100'
+                : phase === 'heroExit'
+                  ? 'opacity-0 scale-[12] duration-3000'
+                  : 'opacity-0 scale-[12]'
+          }
+        `}
+        onTransitionEnd={() => {
+          if (phase === 'fadeInHero') setPhase('heroIdle')
+        }}
+      >
+        <div className="relative z-10 text-center space-y-6">
+          <h1 className="relative text-7xl md:text-8xl font-bold text-white drop-shadow-2xl">
+            GovChat
+          </h1>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full bg-white/10 backdrop-blur-md"
-              >
-                <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              </Button>
-            </DropdownMenuTrigger>
-
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setTheme("light")}>
-                Light
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("dark")}>
-                Dark
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("system")}>
-                System
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <p className="relative text-lg md:text-xl text-white/60 font-light tracking-wide max-w-2xl mx-auto">
+            Transcending Government Services with Ethereal Intelligence
+          </p>
         </div>
-      </nav>
+      </div>
 
-      {/* MAIN CONTENT */}
-      <main className="relative z-10 flex min-h-[calc(100vh-120px)] items-center justify-center">
-        <div className="mx-auto max-w-xl space-y-10 px-6 text-center">
+      {/* HERO NEXT BUTTON */}
+      {phase === 'heroIdle' && (
+        <div
+          className={`
+            absolute bottom-10 left-1/2 -translate-x-1/2 z-20
+            transition-opacity duration-700
+            ${showHeroNext ? 'opacity-100' : 'opacity-0 pointer-events-none'}
+          `}
+        >
+          <button
+            onClick={onHeroNext}
+            className="group relative px-10 py-3 rounded-full font-semibold text-sm overflow-hidden"
+          >
+            {/* Glassmorphism button */}
+            <div className="absolute inset-0 bg-white/15 backdrop-blur-md border border-white/30 rounded-full" />
+            <div className="absolute inset-0 bg-linear-to-r from-white/10 to-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-full" />
+            <span className="relative flex items-center gap-2 text-white">
+              Next <ChevronDown className="w-4 h-4 group-hover:translate-y-1 transition-transform" />
+            </span>
+          </button>
+        </div>
+      )}
 
-          {/* HERO */}
-          <div className="space-y-3">
-            <h1 className="text-5xl font-bold text-white">
-              Our E-Governance Portal
-            </h1>
-            <p className="text-lg text-white/80">
-              Report issues, engage with community, track resolutions
+      {/* CARD SWAP SECTION */}
+      <div
+        className={`
+          absolute inset-0 flex items-center
+          transition-opacity ease-in-out
+          ${phase === 'cardsFadeIn'
+            ? 'opacity-100 duration-2000'
+            : phase === 'cardsIdle'
+              ? 'opacity-100'
+              : phase === 'cardsExit'
+                ? 'opacity-0 duration-2000'
+                : 'opacity-0 pointer-events-none'
+          }
+        `}
+        onTransitionEnd={() => {
+          if (phase === 'cardsFadeIn') setPhase('cardsIdle')
+        }}
+      >
+        <div className="relative mx-auto w-full max-w-7xl px-6 md:px-12">
+          {/* Header */}
+          <div className="mb-16 text-center">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+              A Smarter Way to Engage with Government
+            </h2>
+            <p className="text-base md:text-lg text-white/60 max-w-2xl mx-auto">
+              GovChat brings AI-powered assistance, transparent tracking, and multilingual access together into a single citizen-first portal
             </p>
           </div>
 
-          {/* GLASS ACTION CARDS */}
-          <div className="flex flex-col gap-5">
+          {/* Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              {
+                icon: Zap,
+                title: 'Instant Assistance',
+                desc: 'Get answers to government questions in real-time with AI-powered support'
+              },
+              {
+                icon: Shield,
+                title: 'Secure & Transparent',
+                desc: 'Your data is protected with enterprise-grade security and full transparency'
+              },
+              {
+                icon: Globe,
+                title: 'Multilingual Access',
+                desc: 'Break language barriers with support for 50+ languages and dialects'
+              }
+            ].map((item, idx) => {
+              const Icon = item.icon
+              return (
+                <div
+                  key={idx}
+                  className="group relative overflow-hidden rounded-2xl transition-all duration-500 hover:scale-105"
+                  style={{
+                    animation: `slideUp 0.6s ease-out ${0.1 * idx}s both`
+                  }}
+                >
+                  {/* Glassmorphic background */}
+                  <div className="absolute inset-0 bg-white/8 backdrop-blur-xl border border-white/15 rounded-2xl" />
 
-            {/* Citizen */}
-            <Link href="/citizen/login">
-              <div
-                className="
-                  group cursor-pointer
-                  rounded-2xl
-                  bg-white/15
-                  backdrop-blur-xl
-                  border border-white/20
-                  shadow-xl
-                  p-6
-                  transition-all
-                  hover:bg-white/20
-                "
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/30">
-                      <UserCircle className="h-6 w-6 text-blue-200" />
-                    </div>
-                    <div className="text-left">
-                      <h3 className="text-lg font-semibold text-white">
-                        Continue as Citizen
+                  {/* Hover effect */}
+                  <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl" />
+
+                  {/* Content */}
+                  <div className="relative p-8 h-full flex flex-col justify-between">
+                    <div className="space-y-4">
+                      <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center group-hover:bg-white/15 transition-colors">
+                        <Icon className="w-6 h-6 text-white" />
+                      </div>
+                      <h3 className="text-xl font-semibold text-white group-hover:text-white/90 transition-colors">
+                        {item.title}
                       </h3>
-                      <p className="text-sm text-white/70">
-                        Report issues, join discussions, track progress
-                      </p>
                     </div>
-                  </div>
-                  <ArrowRight className="h-5 w-5 text-white/70 transition-all group-hover:translate-x-1 group-hover:text-white" />
-                </div>
-              </div>
-            </Link>
+                    <p className="text-white/60 text-sm leading-relaxed group-hover:text-white/70 transition-colors">
+                      {item.desc}
+                    </p>
 
-            {/* Admin */}
-            <Link href="/admin/home">
-              <div
-                className="
-                  group cursor-pointer
-                  rounded-2xl
-                  bg-white/15
-                  backdrop-blur-xl
-                  border border-white/20
-                  shadow-xl
-                  p-6
-                  transition-all
-                  hover:bg-white/20
-                "
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/30">
-                      <ShieldCheck className="h-6 w-6 text-emerald-200" />
-                    </div>
-                    <div className="text-left">
-                      <h3 className="text-lg font-semibold text-white">
-                        Admin Portal
-                      </h3>
-                      <p className="text-sm text-white/70">
-                        Manage issues, resolve tickets, update status
-                      </p>
-                    </div>
+                    {/* Animated underline */}
+                    <div className="mt-4 h-0.5 w-0 bg-white/40 group-hover:w-full transition-all duration-500" />
                   </div>
-                  <ArrowRight className="h-5 w-5 text-white/70 transition-all group-hover:translate-x-1 group-hover:text-white" />
                 </div>
-              </div>
-            </Link>
-
-            {/* Handler */}
-            <Link href="/handler/login">
-              <div
-                className="
-                  group cursor-pointer
-                  rounded-2xl
-                  bg-white/15
-                  backdrop-blur-xl
-                  border border-white/20
-                  shadow-xl
-                  p-6
-                  transition-all
-                  hover:bg-white/20
-                "
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-yellow-500/30">
-                      <User className="h-6 w-6 text-yellow-200" />
-                    </div>
-                    <div className="text-left">
-                      <h3 className="text-lg font-semibold text-white">
-                        Handler Portal
-                      </h3>
-                      <p className="text-sm text-white/70">
-                        Manage issues, and help the society
-                      </p>
-                    </div>
-                  </div>
-                  <ArrowRight className="h-5 w-5 text-white/70 transition-all group-hover:translate-x-1 group-hover:text-white" />
-                </div>
-              </div>
-            </Link>
-
+              )
+            })}
           </div>
-
-          {/* FOOTER TEXT */}
-          <p className="text-sm text-white/60">
-            Join thousands of citizens improving their community
-          </p>
         </div>
-      </main>
+      </div>
+
+      {/* FINAL NEXT BUTTON */}
+      {phase === 'cardsIdle' && (
+        <div
+          className={`
+            absolute bottom-10 left-1/2 -translate-x-1/2 z-20
+            transition-opacity duration-700
+            ${showCardsNext ? 'opacity-100' : 'opacity-0 pointer-events-none'}
+          `}
+        >
+          <button
+            onClick={onCardsNext}
+            className="group relative px-10 py-3 rounded-full font-semibold text-sm overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-white/15 backdrop-blur-md border border-white/30 rounded-full" />
+            <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-full" />
+            <span className="relative flex items-center gap-2 text-white">
+              Next <ChevronDown className="w-4 h-4 group-hover:translate-y-1 transition-transform" />
+            </span>
+          </button>
+        </div>
+      )}
+
+      <style jsx>{`
+        @keyframes float {
+          0%, 100% {
+            transform: translateY(0px) translateX(0px);
+            opacity: 0.3;
+          }
+          50% {
+            transform: translateY(-20px) translateX(10px);
+            opacity: 0.6;
+          }
+        }
+
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .animate-float {
+          animation: float 6s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   )
 }

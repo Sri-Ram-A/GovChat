@@ -54,7 +54,7 @@ class ChatConsumer(WebsocketConsumer):
             return
 
         # 3️⃣ Get response from TTT
-        response_text = self.ttt.response(text)
+        response_text = self.ttt.response(text)[:150]
         logger.info(f"[WS] TTT response: {response_text}")
 
         # 4️⃣ Send TTT response as TEXT to frontend

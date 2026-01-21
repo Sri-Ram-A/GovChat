@@ -197,4 +197,5 @@ docker start grpc-retrieval-service
 # to see live logs
 docker logs -f grpc-retrieval-service
 
-## Finally decided to package kokoro tts itself..since that is the most shit
+## Finally decided to package kokoro tts itself..since that is the most shit,then downloaded faiss using conda without any issues
+conda install conda-forge::faiss-gpu

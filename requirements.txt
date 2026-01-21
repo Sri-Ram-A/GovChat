@@ -30,3 +30,7 @@ fastapi
 psycopg[binary]
 psycopg2
 flask_sqlalchemy
+librosa
+deep_translator
+pyarrow==12.0.1 # rag model
+accelerate>=0.26.0

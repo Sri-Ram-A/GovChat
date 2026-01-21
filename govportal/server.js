@@ -12,8 +12,8 @@ const app = next({ dev, hostname, port })
 const handle = app.getRequestHandler()
 
 const httpsOptions = {
-  key: fs.readFileSync(path.join(__dirname, '../localhost+3-key.pem')),
-  cert: fs.readFileSync(path.join(__dirname, '../localhost+3.pem'))
+  key: fs.readFileSync(path.join(__dirname, '../keys/localhost+3-key.pem')),
+  cert: fs.readFileSync(path.join(__dirname, '../keys/localhost+3.pem'))
 }
 const os = require("os");
 

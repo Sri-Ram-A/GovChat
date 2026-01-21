@@ -20,10 +20,11 @@ const navItems: NavItem[] = [
   {
     label: "Services",
     items: [
-      { label: "File Complaint", href: "/citizen/complaints" },
-      { label: "View Status", href: "/citizen/status" },
-      { label: "Documents", href: "/citizen/documents" },
-      { label: "Licenses", href: "/citizen/licenses" },
+      { label: "View Map", href: "/map" },
+      { label: "View Complaints", href: "/admin/complaints" },
+      { label: "View Clusters", href: "/admin/groups" },
+      { label: "About", href: "/about" },
+      { label: "Home", href: "/admin/home" },
     ],
   },
   {
@@ -35,7 +36,7 @@ const navItems: NavItem[] = [
       { label: "Announcements", href: "/resources/announcements" },
     ],
   },
-  { label: "About", href: "/about" },
+  { label: "About Us", href: "/about-us" },
 ];
 
 export default function GovernmentNavbar() {
