@@ -106,7 +106,7 @@ class ComplaintDetailedView(APIView):
         serializer = self.serializer_class(complaint)
         return Response(serializer.data)
 
-class ResolveComplaintGroupStatus(APIView):
+class  ResolveComplaintGroupStatus(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = complaints_serializer.ResolveGroupStatusSerializer
 
@@ -122,7 +122,22 @@ class ResolveComplaintGroupStatus(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        group.grouped_status = serializer.validated_data.get("status","OPEN")
+        new_status = serializer.validated_data.get("status", "OPEN")
+        
+        # Check if admin is trying to set RESOLVED or CLOSED status
+        if new_status in [ 'CLOSED']:
+            return Response(
+                {"message": "Complaints cannot be closed by admin"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        if new_status in [ 'RESOLVED']:
+            return Response(
+                {"message": "Complaints cannot be Resolved by admin"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        group.grouped_status = new_status
+        print("this is the status", group.grouped_status)
         group.save(update_fields=["grouped_status"])
 
         return Response(
@@ -133,7 +148,6 @@ class ResolveComplaintGroupStatus(APIView):
             },
             status=status.HTTP_200_OK
         )
-
 
 class GeoTestAPIView(APIView):
     def post(self, request):

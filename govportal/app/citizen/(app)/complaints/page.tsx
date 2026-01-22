@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
+import {   useSearchParams ,useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { FilePlusCorner, MessageCircle, MapPin } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -71,22 +71,34 @@ function EvidenceRenderer({ evidence }: { evidence: Evidence }) {
 
 /* -------------------------------- Page -------------------------------- */
 
+/* -------------------------------- Page -------------------------------- */
+
 export default function AllComplaintsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Determine if showing "my complaints" or "all complaints"
+  const filter = searchParams.get('filter');
+  const isMyComplaints = filter === 'my';
+  const endpoint = isMyComplaints 
+    ? "citizens/complaints/my/" 
+    : "citizens/complaints/all/";
+  const pageTitle = isMyComplaints ? "My Complaints" : "All Complaints";
+
   useEffect(() => {
-    REQUEST("GET", "citizens/complaints/all/")
+    setLoading(true);
+    REQUEST("GET", endpoint)
       .then((res: any) => setComplaints(res || []))
       .catch((err) => {
         console.error(err);
         toast.error(err?.message || "Failed to load complaints");
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [endpoint]); // Re-fetch when endpoint changes
 
   const handleComplaintClick = (complaint: Complaint) => {
     setSelectedComplaint(complaint);

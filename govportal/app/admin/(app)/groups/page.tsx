@@ -139,13 +139,13 @@ export default function AdminGroupsPage() {
         try {
             setUpdatingStatus(true);
 
-            await REQUEST(
+            const response = await REQUEST(
                 "POST",
                 `admins/complaint-groups/status/${selectedGroup.id}/`,
                 { status: newStatus }
             );
 
-            toast.success("Group status updated");
+            toast.success(response.message || "Group status updated");
 
             // Update UI instantly (no refetch needed)
             setGroups((prev) =>
@@ -161,8 +161,14 @@ export default function AdminGroupsPage() {
             );
 
             setStatusDialogOpen(false);
-        } catch {
-            toast.error("Failed to update group status");
+        } catch (error: any) {
+            // Just show whatever message we can find
+            toast.error(
+                error?.response?.data?.message || 
+                error?.response?.data?.detail ||
+                error?.message ||
+                "Something went wrong"
+            );
         } finally {
             setUpdatingStatus(false);
         }

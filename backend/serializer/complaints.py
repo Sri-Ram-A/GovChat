@@ -4,6 +4,7 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 import entities.complaints as complaints_entity
 import entities.governance as complaints_governance
 from entities.admins import AdminProfile
+from entities.complaints import ComplaintCount
 
 class ImageCaptionSerializer(serializers.Serializer):
     file = serializers.ImageField()
@@ -11,7 +12,13 @@ class ImageCaptionSerializer(serializers.Serializer):
 class ResolveLocationSerializer(serializers.Serializer):
     latitude = serializers.FloatField()
     longitude = serializers.FloatField()
-
+    
+class ComplaintCountSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ComplaintCount
+        fields = ['complaint', 'closed_count']
+        read_only_fields = ['complaint']
+    
 class ComplaintCreateSerializer(serializers.ModelSerializer):
     department = serializers.PrimaryKeyRelatedField(queryset=complaints_entity.Department.objects.all())
     class Meta:

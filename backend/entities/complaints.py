@@ -114,3 +114,16 @@ class GroupTimeline(models.Model):
     
     def __str__(self):
         return f"{self.group} - {self.text}"
+class ComplaintCount(models.Model):
+    complaint = models.OneToOneField(
+        Complaint,
+        on_delete=models.CASCADE,
+        related_name='count'
+    )
+    closed_count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = 'complaint_counts'
+
+    def __str__(self):
+        return f"Complaint {self.complaint_id} - Closed {self.closed_count} times"
