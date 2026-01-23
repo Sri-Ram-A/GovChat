@@ -139,12 +139,12 @@ class CitizenComplaintGroupStatus(APIView):
         # CLOSED - Any authenticated citizen can vote (not just group members)
         elif new_status == 'CLOSED':
             # Prevent complaint owners in this group from voting to close
-            is_complaint_owner = group.complaints.filter(citizen=citizen_profile).exists()
-            if is_complaint_owner:
-                return Response(
-                    {"message": "Complaint owners cannot close their own complaints"},
-                    status=status.HTTP_403_FORBIDDEN
-                )
+            # is_complaint_owner = group.complaints.filter(citizen=citizen_profile).exists()
+            # if is_complaint_owner:
+            #     return Response(
+            #         {"message": "Complaint owners cannot close their own complaints"},
+            #         status=status.HTTP_403_FORBIDDEN
+            #     )
             
             # Get or create ComplaintCount for this group
             complaint_count, created = complaints_entity.ComplaintCount.objects.get_or_create(

@@ -193,8 +193,8 @@ export default function HeroPage() {
               },
               {
                 icon: Globe,
-                title: 'Multilingual Access',
-                desc: 'Break language barriers with support for 50+ languages and dialects'
+                title: 'Community Verification',
+                desc: 'Ensure authenticity and trust with community-driven verification processes.'
               }
             ].map((item, idx) => {
               const Icon = item.icon

@@ -1,13 +1,19 @@
-"use client"
-import React, { useEffect, useState } from "react"
-import FormField from "@/components/reusables/forms/FormField"
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select"
+"use client";
+
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Label } from "@/components/ui/label"
-import { Button } from "@/components/ui/button"
-import { Department, ComplaintCreatePayload } from "@/types"
-import { REQUEST } from "@/services/api"
-import { toast } from "sonner"
+import { Brain } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import LightRays from '@/components/LightRays';
+import ElectricBorder from '@/components/ElectricBorder';
+import GlassCard from '@/components/GlassCard';
+import Badge from '@/components/Badge';
+import InfoBox from '@/components/InfoBox';
+import DecryptedText from '@/components/DecryptedText';
+import AnimatedInput from "@/components/reusables/decrpyText";
+import { REQUEST } from "@/services/api";
+import type { MediaType, ComplaintCreatePayload, Department } from "@/types";
 
 const INITIAL_FORM_STATE: ComplaintCreatePayload = {
   title: "",
@@ -20,55 +26,36 @@ const INITIAL_FORM_STATE: ComplaintCreatePayload = {
   pincode: "",
   latitude: 0,
   longitude: 0,
-}
+};
 
-const UPDATABLE_LOCATION_FIELDS = ["city", "pincode", "address_line_2"] as const
-
-export default function CitizenPostPage() {
+export default function PostComplaintPage() {
   const router = useRouter();
-  const [departments, setDepartments] = useState<Department[]>([])
-  const [loading, setLoading] = useState(false)
-  const [file, setFile] = useState<File | null>(null)
-  const [form, setForm] = useState<ComplaintCreatePayload>(INITIAL_FORM_STATE)
+  const [loading, setLoading] = useState(false);
+  const [analyzingPhoto, setAnalyzingPhoto] = useState(false);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [photoAnalyzed, setPhotoAnalyzed] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<{
+    confidence?: number;
+    department_name?: string;
+  } | null>(null);
+  
+  const [form, setForm] = useState<ComplaintCreatePayload>(INITIAL_FORM_STATE);
+  const [file, setFile] = useState<File | null>(null);
 
   useEffect(() => {
-    fetchDepartments()
-  }, [])
-
-  // ==================== DATA FETCHING ====================
-
-  const fetchDepartments = async () => {
-    try {
-      const res = await REQUEST("GET", "admins/departments/")
-      setDepartments(res || [])
-    } catch (err) {
-      console.error("Failed to fetch departments:", err)
-    }
-  }
-
-  // ==================== FORM HANDLERS ====================
+    REQUEST("GET", "admins/departments/")
+      .then(setDepartments)
+      .catch(console.error);
+  }, []);
 
   const updateForm = (updates: Partial<ComplaintCreatePayload>) => {
-    setForm(prev => ({ ...prev, ...updates }))
-  }
-
-  const handleChange = (
-    key: keyof ComplaintCreatePayload,
-    value: string | number
-  ) => {
-    updateForm({ [key]: value })
-  }
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFile(e.target.files?.[0] || null)
-  }
-
-  // ==================== GEOLOCATION ====================
+    setForm(prev => ({ ...prev, ...updates }));
+  };
 
   const getCurrentCoordinates = (): Promise<{ lat: number; lng: number }> => {
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
-        return reject(new Error("Geolocation not supported"))
+        return reject(new Error("Geolocation not supported"));
       }
 
       navigator.geolocation.getCurrentPosition(
@@ -76,247 +63,367 @@ export default function CitizenPostPage() {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
         }),
-        err => reject(err)
-      )
-    })
-  }
+        err => reject(err),
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    });
+  };
 
-  const handleRefineLocation = async () => {
-    setLoading(true)
+  async function uploadAndAnalyze() {
+    if (!file) {
+      alert("Please select a photo first");
+      return;
+    }
+
+    setAnalyzingPhoto(true);
+
     try {
-      const { lat, lng } = await getCurrentCoordinates()
+      // Get current coordinates
+      const { lat, lng } = await getCurrentCoordinates();
 
+      // Step 1: Get location data
       const location = await REQUEST("POST", "citizens/ai/resolve_location/", {
         latitude: lat,
         longitude: lng,
-      })
+      });
 
-      const updates: Partial<ComplaintCreatePayload> = {
-        latitude: lat,
-        longitude: lng,
-      }
-
-      UPDATABLE_LOCATION_FIELDS.forEach(key => {
-        if (location[key]) {
-          updates[key] = location[key]
-        }
-      })
-
-      updateForm(updates)
-    } catch (err) {
-      console.error("Location refinement failed:", err)
-      toast.error("Failed to refine location. Please try again.")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // ==================== AI DESCRIPTION ====================
-
-  const handleRefineDescription = async () => {
-    if (!file) {
-      toast.warning("Please upload an image first")
-      return
-    }
-
-    setLoading(true)
-    try {
-      const fd = new FormData()
-      fd.append("file", file)
+      // Step 2: Get AI caption and department suggestion
+      const fd = new FormData();
+      fd.append("file", file);
 
       const ai = await REQUEST("POST", "citizens/ai/caption_image/", fd, {
         isMultipart: true,
-      })
+      });
 
+      // Update AI suggestions state
+      setAiSuggestions({
+        confidence: ai.confidence,
+        department_name: ai.suggested_department?.name,
+      });
+
+      // Update form with all the data
       updateForm({
-        description: ai.caption,
-        department: ai.suggested_department.id,
-      })
-    } catch (err) {
-      console.error("AI refinement failed:", err)
-      toast.error("Failed to generate AI description. Please try again.")
+        title: ai.caption || "",
+        description: ai.caption || "",
+        department: ai.suggested_department?.id || 0,
+        address_line_2: location.address_line_2 || "",
+        city: location.city || "",
+        pincode: location.pincode || "",
+        latitude: lat,
+        longitude: lng,
+      });
+
+      setPhotoAnalyzed(true);
+      alert("Photo analyzed! Please review the auto-filled details.");
+    } catch (error: any) {
+      console.error("Analysis failed:", error);
+      alert("Failed to upload and analyze photo. Please try again.");
     } finally {
-      setLoading(false)
+      setAnalyzingPhoto(false);
     }
   }
 
-  // ==================== SUBMISSION ====================
-
   const getMediaType = (file: File): string => {
-    if (file.type.startsWith("image")) return "image"
-    if (file.type.startsWith("video")) return "video"
-    if (file.type.startsWith("audio")) return "audio"
-    return "document"
-  }
+    if (file.type.startsWith("image")) return "image";
+    if (file.type.startsWith("video")) return "video";
+    if (file.type.startsWith("audio")) return "audio";
+    return "document";
+  };
 
   const ensureCoordinates = async (): Promise<{ latitude: number; longitude: number }> => {
     if (form.latitude && form.longitude) {
-      return { latitude: form.latitude, longitude: form.longitude }
+      return { latitude: form.latitude, longitude: form.longitude };
     }
 
-    const coords = await getCurrentCoordinates()
-    return { latitude: coords.lat, longitude: coords.lng }
-  }
+    const coords = await getCurrentCoordinates();
+    return { latitude: coords.lat, longitude: coords.lng };
+  };
 
   const uploadEvidence = async (complaintId: number, file: File) => {
-    const fd = new FormData()
-    fd.append("file", file)
-    fd.append("media_type", getMediaType(file))
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("media_type", getMediaType(file));
 
     await REQUEST(
       "POST",
       `citizens/upload_evidence/${complaintId}/`,
       fd,
       { isMultipart: true }
-    )
-  }
+    );
+  };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!file) {
-      toast.warning("Evidence file is required")
-      return
+  async function submitComplaint() {
+    if (!photoAnalyzed || !file) {
+      alert("Please upload and analyze a photo first");
+      return;
     }
 
-    setLoading(true)
+    if (!form.department || !form.title) {
+      alert("Please fill in all required fields");
+      return;
+    }
+
+    setLoading(true);
     try {
-      const coordinates = await ensureCoordinates()
+      const coordinates = await ensureCoordinates();
 
       const complaint = await REQUEST("POST", "citizens/complaints/", {
         ...form,
         ...coordinates,
-      })
+      });
 
-      await uploadEvidence(complaint.id, file)
+      await uploadEvidence(complaint.id, file);
 
-      toast.success("Complaint submitted successfully!")
       router.push("/citizen/complaints");
-      // Reset form
-      setForm(INITIAL_FORM_STATE)
-      setFile(null)
-    } catch (err) {
-      console.error("Submission failed:", err)
-      toast.error("Failed to submit complaint. Please try again.")
+    } catch (error) {
+      console.error("Complaint submission failed:", error);
+      alert("Failed to submit complaint. Please try again.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
-  // ==================== RENDER ====================
-
-  const isImageFile = file?.type.startsWith("image")
-
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">Create a Complaint</h1>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Basic Information */}
-        <FormField
-          label="Title"
-          value={form.title}
-          onChange={v => handleChange("title", v)}
-          required
+    <div style={{ minHeight: '10vh', position: 'relative', background: '#0a0a1a' }}>
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '100vh', zIndex: 0, pointerEvents: 'none' }}>
+        <LightRays 
+          raysOrigin="top-center"
+          raysColor="#6600ff"
+          raysSpeed={1}
+          rayLength={3.0}
+          pulsating={false}
+          fadeDistance={1.0}
+          saturation={1.0}
+          mouseInfluence={0.3}
+          noiseAmount={0.0}
+          distortion={0.0}
+          className=""
         />
+      </div>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', minHeight: '100vh', position: 'relative', zIndex: 10, gap: '40px' }}>
+        
+        {/* Left Card - Photo Upload */}
+        <ElectricBorder color="#4169E1" speed={0.8} chaos={0.02} borderRadius={24} >
+          <GlassCard variant="transparent" width="600px" height="650px">
+            <h2 style={{ fontSize: '32px', fontWeight: 'bold', color: 'white', margin: '24px 0 16px', lineHeight: '1.2' }}>
+              Upload Photo
+            </h2>
+            <p style={{ color: '#a0a0b8', fontSize: '16px', lineHeight: '1.6', marginBottom: '24px' }}>
+              Upload a photo of the issue for AI analysis
+            </p>
 
-        <FormField
-          label="Description"
-          value={form.description}
-          onChange={v => handleChange("description", v)}
-          required
-        />
+            <input
+              type="file"
+              accept="image/*"
+              style={{ 
+                display: 'block', 
+                width: '100%', 
+                padding: '12px',
+                background: 'rgba(255, 255, 255, 0.1)',
+                border: '2px dashed rgba(255, 255, 255, 0.3)',
+                borderRadius: '8px',
+                color: 'white',
+                cursor: 'pointer',
+                marginBottom: '16px'
+              }}
+              onChange={(e) => {
+                const selectedFile = e.target.files?.[0];
+                if (selectedFile) {
+                  setFile(selectedFile);
+                  setPhotoAnalyzed(false); // Reset analysis state
+                }
+              }}
+            />
 
-        {/* Address Fields */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            label="Address Line 1"
-            value={form.address_line_1}
-            onChange={v => handleChange("address_line_1", v)}
-          />
+            {file && (
+              <div style={{ marginBottom: '16px' }}>
+                <Badge variant="pill">{file.name}</Badge>
+              </div>
+            )}
 
-          <FormField
-            label="Address Line 2"
-            value={form.address_line_2}
-            onChange={v => handleChange("address_line_2", v)}
-          />
-        </div>
+            {file && !photoAnalyzed && (
+              <button 
+                onClick={uploadAndAnalyze}
+                disabled={analyzingPhoto}
+                style={{ 
+                  width: '100%', 
+                  padding: '16px',
+                  background: 'white',
+                  color: '#1a1a2e',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  border: 'none',
+                  borderRadius: '12px',
+                  cursor: analyzingPhoto ? 'not-allowed' : 'pointer',
+                  opacity: analyzingPhoto ? 0.7 : 1,
+                  marginBottom: '16px'
+                }}
+              >
+                {analyzingPhoto ? "Analyzing..." : "Upload & Analyze"}
+              </button>
+            )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <FormField
-            label="City"
-            value={form.city}
-            onChange={v => handleChange("city", v)}
-          />
+            {photoAnalyzed && aiSuggestions && (
+              <div>
+                <InfoBox variant="primary">
+                  <p style={{ color: '#6ed397', fontWeight: '600', marginBottom: '8px' }}>
+                    Photo analyzed successfully!
+                  </p>
+                </InfoBox>
 
-          <FormField
-            label="Pincode"
-            value={form.pincode}
-            onChange={v => handleChange("pincode", v)}
-          />
+                <InfoBox variant="secondary">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                    <Brain style={{ width: '16px', height: '16px', color: '#6b7bff' }} />
+                    <span style={{ color: 'white', fontWeight: '600', fontSize: '14px' }}>AI Analysis</span>
+                  </div>
+                  
+                  {aiSuggestions.confidence !== undefined && (
+                    <p style={{ color: '#d0d8ff', fontSize: '14px', marginBottom: '8px' }}>
+                      <span style={{ fontWeight: '500' }}>Confidence:</span> {(aiSuggestions.confidence * 100).toFixed(0)}%
+                    </p>
+                  )}
+                  
+                  {aiSuggestions.department_name && (
+                    <p style={{ color: '#d0d8ff', fontSize: '14px', marginBottom: '8px' }}>
+                      <span style={{ fontWeight: '500' }}>Department:</span>{' '}
+                      <DecryptedText 
+                        text={aiSuggestions.department_name} 
+                        animateOn="hover" 
+                        speed={80}
+                        maxIterations={100}
+                        sequential={true}
+                        revealDirection="start"
+                      />
+                    </p>
+                  )}
+                </InfoBox>
+              </div>
+            )}
+          </GlassCard>
+        </ElectricBorder>
 
-          <div className="flex items-end">
-            <Button
-              type="button"
-              onClick={handleRefineLocation}
-              disabled={loading}
-              variant="outline"
-              className="w-full"
-            >
-              Refine Location
-            </Button>
-          </div>
-        </div>
+        {/* Right Card - Form Details */}
+        <ElectricBorder color="#4169E1" speed={0.8} chaos={0.02} borderRadius={24}>
+          <GlassCard variant="transparent" width="600px" height="600px">
+            <div style={{ maxHeight: '80vh', overflowY: 'auto', paddingRight: '8px' }}>
+              <h2 style={{ fontSize: '32px', fontWeight: 'bold', color: 'white', margin: '24px 0 16px', lineHeight: '1.2' }}>
+                Review Details
+              </h2>
 
-        {/* Department Selection */}
-        <div className="space-y-2">
-          <Label>Department</Label>
-          <Select
-            value={form.department.toString()}
-            onValueChange={v => handleChange("department", Number(v))}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select Department" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {departments.map(dep => (
-                  <SelectItem key={dep.id} value={dep.id.toString()}>
-                    {dep.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div>
+              <div style={{ marginBottom: '24px' }}>
+                <AnimatedInput
+                  label="Complaint Title"
+                  value={form.title}
+                  onChange={(v) => updateForm({ title: v })}
+                  placeholder="Enter complaint title"
+                  draftComplaintId={photoAnalyzed ? 1 : null}
+                  fieldKey="title"
+                />
+              </div>
 
-        {/* Evidence Upload */}
-        <div className="space-y-2">
-          <Label>Evidence (Image / Video / Audio / PDF)</Label>
-          <input
-            type="file"
-            accept="image/*,video/*,audio/*,.pdf"
-            onChange={handleFileChange}
-            className="w-full"
-          />
-          {isImageFile && (
-            <Button
-              type="button"
-              onClick={handleRefineDescription}
-              disabled={loading}
-              variant="outline"
-              className="mt-2"
-            >
-              Refine Description (AI)
-            </Button>
-          )}
-        </div>
+              <div style={{ marginBottom: '24px' }}>
+                <AnimatedInput
+                  label="Description"
+                  type="textarea"
+                  value={form.description}
+                  onChange={(v) => updateForm({ description: v })}
+                  placeholder="Explain the issue in detail..."
+                  draftComplaintId={photoAnalyzed ? 1 : null}
+                  fieldKey="description"
+                />
+              </div>
 
-        {/* Submit Button */}
-        <Button type="submit" disabled={loading} className="w-full">
-          {loading ? "Submitting..." : "Submit Complaint"}
-        </Button>
-      </form>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+                <AnimatedInput
+                  label="Address Line 1"
+                  placeholder="House/Building No."
+                  value={form.address_line_1}
+                  onChange={(v) => updateForm({ address_line_1: v })}
+                  draftComplaintId={photoAnalyzed ? 1 : null}
+                  fieldKey="address_line_1"
+                />
+              </div>
+              <div>
+                <AnimatedInput
+                  label="Address Line 2"
+                  placeholder="Street/Area"
+                  value={form.address_line_2}
+                  onChange={(v) => updateForm({ address_line_2: v })}
+                  draftComplaintId={photoAnalyzed ? 1 : null}
+                  fieldKey="address_line_2"
+                />
+              </div>
+              <div style={{ marginBottom: '24px' }}></div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+                <AnimatedInput
+                  label="City"
+                  value={form.city}
+                  onChange={(v) => updateForm({ city: v })}
+                  placeholder="City"
+                  draftComplaintId={photoAnalyzed ? 1 : null}
+                  fieldKey="city"
+                />
+
+                <AnimatedInput
+                  label="Pincode"
+                  value={form.pincode}
+                  onChange={(v) => updateForm({ pincode: v })}
+                  placeholder="Pincode"
+                  draftComplaintId={photoAnalyzed ? 1 : null}
+                  fieldKey="pincode"
+                />
+
+                <div>
+                  <Label style={{ color: 'white', marginBottom: '8px', display: 'block' }}>Department</Label>
+                  <Select
+                    value={form.department ? String(form.department) : ""}
+                    onValueChange={(value) => updateForm({ department: Number(value) })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.map((d) => (
+                        <SelectItem key={d.id} value={String(d.id)}>
+                          {d.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {photoAnalyzed ? (
+                <button
+                  onClick={submitComplaint}
+                  disabled={loading || !form.department || !form.title}
+                  style={{ 
+                    width: '100%', 
+                    padding: '16px',
+                    background: 'white',
+                    color: '#1a1a2e',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    border: 'none',
+                    borderRadius: '12px',
+                    cursor: (loading || !form.department || !form.title) ? 'not-allowed' : 'pointer',
+                    opacity: (loading || !form.department || !form.title) ? 0.5 : 1
+                  }}
+                >
+                  {loading ? "Submitting..." : "Submit Complaint"}
+                </button>
+              ) : (
+                <InfoBox variant="primary">
+                  <p style={{ color: '#9db4ff', fontSize: '14px' }}>
+                    ℹ️ Please upload and analyze a photo first
+                  </p>
+                </InfoBox>
+              )}
+            </div>
+          </GlassCard>
+        </ElectricBorder>
+
+      </div>
     </div>
-  )
+  );
 }

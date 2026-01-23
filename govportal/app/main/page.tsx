@@ -46,8 +46,15 @@ export default function HomePage() {
       {/* NAVBAR */}
       <nav className="relative z-20 w-full px-6 py-4 md:px-12 md:py-6">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
-          <div className="text-xl md:text-2xl font-black tracking-tighter text-white">
-            GOV<span className="text-blue-400">CHAT</span>
+          <div className="flex items-center gap-4">
+            <img 
+              src="/RVlogo/logo.png" 
+              alt="Logo" 
+              className="h-10 md:h-12 w-auto"
+            />
+            <div className="text-xl md:text-2xl font-black tracking-tighter text-white">
+              GOV<span className="text-blue-400">CHAT</span>
+            </div>
           </div>
 
           <DropdownMenu>
