@@ -11,6 +11,45 @@ import  serializer.handlers as handler_serializer
 from entities.governance import Department
 from entities.complaints import ComplaintGroup
 from serializer.complaints import ParticularComplaintGroupSerializer
+
+from entities.complaints import GroupTimeline
+
+class HandlerTimelineAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """Handler posts a timeline update to their assigned group"""
+        handler = request.user.handler_profile
+        
+        if not handler.group:
+            return Response(
+                {"message": "You are not assigned to any group"},
+                status=400
+            )
+        
+        title = request.data.get("title", "")
+        text = request.data.get("text", "")
+        image = request.FILES.get("image", None)
+        
+        if not text and not title:
+            return Response(
+                {"message": "Title or text is required"},
+                status=400
+            )
+        
+        timeline = GroupTimeline.objects.create(
+            group=handler.group,
+            handler=handler,
+            title=title,
+            text=text,
+            image=image
+        )
+        
+        return Response(
+            {"message": "Timeline updated successfully", "id": timeline.id},
+            status=status.HTTP_201_CREATED
+        )
+
 class HandlerListAPIView(APIView):
     serializer_class = handler_serializer.HandlerProfileSerializer
     
@@ -94,9 +133,11 @@ class MyAssignedGroupAPIView(APIView):
     def get(self, request):
         handler = request.user.handler_profile
         if not handler.group:
-            return Response(
-                {"message": "No group assigned"},
-                status=200
-            )
-        serializer = self.serializer_class(handler.group)
+            return Response({"message": "No group assigned"}, status=200)
+        
+        # IMPORTANT: Pass request in context
+        serializer = ParticularComplaintGroupSerializer(
+            handler.group, 
+            context={'request': request}  # ← ADD THIS
+        )
         return Response(serializer.data)

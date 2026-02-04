@@ -3,6 +3,7 @@ from .citizens import CitizenProfile
 from .admins import AdminProfile
 from .governance import Department
 
+
 class ComplaintGroup(models.Model):
     title = models.CharField(max_length=255)
     department = models.ForeignKey(Department,on_delete=models.PROTECT,related_name='complaint_groups',null=True,blank=True) # nullable (temporarily) once i shld reset db.sqlite3
@@ -100,10 +101,16 @@ class Evidence(models.Model):
         return f"{self.media_type} - {self.file.name}"
 
 class GroupTimeline(models.Model):
-    group = models.ForeignKey(ComplaintGroup,on_delete=models.CASCADE,related_name="timeline")
-    admin = models.ForeignKey(AdminProfile,on_delete=models.CASCADE,related_name='timeline')
-
-    title = models.CharField(max_length=255,null=True, blank=True)
+    group = models.ForeignKey(ComplaintGroup, on_delete=models.CASCADE, related_name="timeline")
+    admin = models.ForeignKey(AdminProfile, on_delete=models.CASCADE, related_name='timeline', null=True, blank=True)
+    handler = models.ForeignKey(
+        'HandlerProfile',  # ✅ String reference instead of import
+        on_delete=models.CASCADE,
+        related_name='timeline',
+        null=True,
+        blank=True
+    )
+    title = models.CharField(max_length=255, null=True, blank=True)
     text = models.TextField(blank=True)
     image = models.ImageField(upload_to="group_timeline/", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -111,9 +118,11 @@ class GroupTimeline(models.Model):
     class Meta:
         db_table = 'timeline'
         verbose_name_plural = 'Timeline'
-    
+        ordering = ['-created_at']  # Latest first
+
     def __str__(self):
-        return f"{self.group} - {self.text}"
+        posted_by = "Admin" if self.admin else "Handler" if self.handler else "Unknown"
+        return f"{self.group} - {self.text[:50]} (by {posted_by})"
 class ComplaintCount(models.Model):
     complaint = models.OneToOneField(
         Complaint,
