@@ -4,7 +4,7 @@ from .itt_client import itt
 import os
 from loguru import logger
 import requests
-LOCATIONIQ_KEY = os.getenv("LOCATIONIQ_KEY")
+LOCATIONIQ_KEY = "pk.371a6630b5644f04659e2e3a616ca5c2"
 
 if LOCATIONIQ_KEY is None or not LOCATIONIQ_KEY.strip():
     logger.warning("LOCATIONIQ_KEY is not set or contains only whitespace.")

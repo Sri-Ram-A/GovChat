@@ -21,7 +21,8 @@ const navItems: NavItem[] = [
     label: "Services",
     items: [
       { label: "File Complaint", href: "/citizen/post" },
-      { label: "View Complaints", href: "/citizen/complaints" },
+      { label: "View All Complaints", href: "/citizen/complaints" },
+      { label: "View My Complaints", href: "/citizen/complaints?filter=my" },        // My complaints only
       { label: "View Map", href: "/map" },
       { label: "Need Help?", href: "/citizen/chat" },
     ],
