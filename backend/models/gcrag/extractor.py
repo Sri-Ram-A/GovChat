@@ -1,4 +1,6 @@
 import os
+os.environ["HF_HOME"] = "D:/hf_cache"
+
 import re
 from typing import List, Dict, Tuple
 
@@ -53,7 +55,7 @@ def normalize_section_id(element: dict, idx: int) -> str:
     return f"section-{idx + 1}-p{page}-{etype.lower()}"
 
 
-def extract_entities(raw_text: str) -> List[Dict[str, str]]:
+def extract_entities(raw_text: str, section_id: str) -> List[Dict[str, str]]:
     nlp = load_spacy_model()
     doc = nlp(raw_text)
     entities: List[Dict[str, str]] = []
@@ -78,7 +80,7 @@ def extract_entities(raw_text: str) -> List[Dict[str, str]]:
             continue
         seen.add(key)
         entities.append({
-            "id": f"{ent.label_}_{len(entities) + 1}",
+            "id": f"{section_id}_{ent.label_}_{len(entities) + 1}",
             "label": ent.label_,
             "name": name,
         })
@@ -97,7 +99,7 @@ def extract_entities(raw_text: str) -> List[Dict[str, str]]:
             continue
         seen.add(key)
         entities.append({
-            "id": f"CONCEPT_{len(entities) + 1}",
+            "id": f"{section_id}_CONCEPT_{len(entities) + 1}",
             "label": "CONCEPT",
             "name": name,
         })
@@ -233,7 +235,7 @@ def extract_graph(elements: List[Dict[str, str]]) -> List[Dict[str, object]]:
             continue
 
         logger.info("Extracting section {}", section_id)
-        entities = extract_entities(raw_text)
+        entities = extract_entities(raw_text, section_id)
 
         relations, confidence = [], 0.0
         try:

@@ -1,18 +1,24 @@
-from parser import parse_document
-from extractor import extract_graph
+import asyncio
+import os
+os.environ["HF_HOME"] = "D:/hf_cache"
 
-elements = parse_document("sample.pdf")
+from dotenv import load_dotenv
+load_dotenv()
 
-# test on first 3 elements only — REBEL is slow
-test_elements = elements[:3]
+from retriever import _retrieve_answer_async
 
-graphs = extract_graph(test_elements)
+async def main():
+    questions = [
+        "What is the role of machine learning in AI governance?",
+        "What are the limitations of existing e-governance systems?",
+    ]
+    for i, q in enumerate(questions):
+        if i > 0:
+            await asyncio.sleep(5)  # wait 5s between requests
+        print(f"\n❓ {q}")
+        result = await _retrieve_answer_async(q, top_k=1)
+        print(f"💬 {result['answer']}")
+        print(f"📊 Confidence: {result['confidence']:.4f}")
+        print(f"📦 Graphs used: {result['graphs_used']}")
 
-for g in graphs:
-    print(f"\n--- {g['section_id']} ---")
-    print(f"Entities ({len(g['entities'])}):")
-    for e in g['entities']:
-        print(f"  [{e['label']}] {e['name']}")
-    print(f"Relations ({len(g['relations'])}):")
-    for r in g['relations']:
-        print(f"  {r['from']} --[{r['type']}]--> {r['to']}")
+asyncio.run(main())
