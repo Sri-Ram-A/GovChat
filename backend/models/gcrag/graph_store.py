@@ -51,45 +51,21 @@ class GraphStore:
                 sections = graph.get("sections", [])
                 for section in sections:
                     section_id = section.get("section_id", "")
-                    raw_text = section.get("raw_text", "")
                     entities = section.get("entities", [])
                     relations = section.get("relations", [])
-                    section_uid = f"{graph_id}:{section_id}"
-
-                    await session.run(
-                        """
-                        MERGE (s:Section {id: $section_uid})
-                        SET s.section_id = $section_id,
-                            s.document_id = $document_id,
-                            s.raw_text = $raw_text
-                        """,
-                        section_uid=section_uid,
-                        section_id=section_id,
-                        document_id=graph_id,
-                        raw_text=raw_text,
-                    )
 
                     # Store entities
                     for entity in entities:
                         await session.run(
                             """
                             MERGE (n:Entity {id: $id})
-                            SET n.label = $label,
-                                n.name = $name,
-                                n.document_id = $document_id,
-                                n.section_id = $section_id,
-                                n.raw_text = $raw_text
-                            WITH n
-                            MATCH (s:Section {id: $section_uid})
-                            MERGE (s)-[:HAS_ENTITY]->(n)
+                            SET n.label = $label, n.name = $name, n.document_id = $document_id, n.section_id = $section_id
                             """,
                             id=entity["id"],
                             label=entity["label"],
                             name=entity["name"],
                             document_id=graph_id,
-                            section_id=section_id,
-                            raw_text=raw_text,
-                            section_uid=section_uid,
+                            section_id=section_id
                         )
 
                     # Store relations
@@ -107,7 +83,7 @@ class GraphStore:
                             from_name=from_name,
                             to_name=to_name,
                             document_id=graph_id
-                        )
+                            )
 
                 logger.info("Successfully stored graph with {} sections", len(sections))
                 return graph_id
@@ -115,28 +91,6 @@ class GraphStore:
             except Exception as e:
                 logger.error("Failed to store graph: {}", e)
                 raise
-
-    async def _section_schema_exists(self, session, graph_id: str) -> bool:
-        labels_result = await session.run(
-            """
-            CALL db.labels() YIELD label
-            RETURN collect(label) AS labels
-            """
-        )
-        labels_record = await labels_result.single()
-        labels = labels_record["labels"] if labels_record else []
-        if "Section" not in labels:
-            return False
-
-        result = await session.run(
-            """
-            MATCH (s:Section {document_id: $graph_id})
-            RETURN count(s) AS section_count
-            """,
-            graph_id=graph_id
-        )
-        record = await result.single()
-        return bool(record and record["section_count"] > 0)
 
     async def get_graph(self, graph_id: str) -> Dict:
         """
@@ -148,62 +102,16 @@ class GraphStore:
         driver = await self._get_driver()
         async with driver.session(database=os.getenv("NEO4J_DATABASE", "gcragdb")) as session:
             try:
-                sections = []
-                if await self._section_schema_exists(session, graph_id):
-                    result = await session.run(
-                        """
-                        MATCH (s:Section {document_id: $graph_id})-[:HAS_ENTITY]->(n:Entity)
-                        RETURN s.section_id as section_id, s.raw_text as raw_text, collect(n) as entities
-                        """,
-                        graph_id=graph_id
-                    )
-                    async for record in result:
-                        section_id = record["section_id"]
-                        raw_text = record["raw_text"]
-                        entities = [
-                            {
-                                "id": node["id"],
-                                "label": node["label"],
-                                "name": node["name"]
-                            }
-                            for node in record["entities"]
-                        ]
-
-                        rel_result = await session.run(
-                            """
-                            MATCH (a:Entity {document_id: $graph_id, section_id: $section_id})-[r]->(b:Entity {document_id: $graph_id})
-                            RETURN type(r) as rel_type, a.name as from_name, b.name as to_name
-                            """,
-                            graph_id=graph_id,
-                            section_id=section_id
-                        )
-                        relations = []
-                        async for rel_record in rel_result:
-                            relations.append({
-                                "from": rel_record["from_name"],
-                                "type": rel_record["rel_type"].lower().replace("_", " "),
-                                "to": rel_record["to_name"]
-                            })
-
-                        sections.append({
-                            "section_id": section_id,
-                            "entities": entities,
-                            "relations": relations,
-                            "raw_text": raw_text or ""
-                        })
-
-                    logger.info("Retrieved graph with {} sections using Section schema", len(sections))
-                    return {"sections": sections}
-
-                logger.info("No Section nodes found for graph {}, falling back to entity-only retrieval", graph_id)
-                fallback_result = await session.run(
+                # Get entities grouped by section
+                result = await session.run(
                     """
                     MATCH (n:Entity {document_id: $graph_id})
                     RETURN coalesce(n.section_id, 'default') as section_id, collect(n) as entities
                     """,
                     graph_id=graph_id
                 )
-                async for record in fallback_result:
+                sections = []
+                async for record in result:
                     section_id = record["section_id"]
                     entities = [
                         {
@@ -214,6 +122,7 @@ class GraphStore:
                         for node in record["entities"]
                     ]
 
+                    # Get relations for this section
                     rel_result = await session.run(
                         """
                         MATCH (a:Entity {document_id: $graph_id, section_id: $section_id})-[r]->(b:Entity {document_id: $graph_id})
@@ -234,10 +143,10 @@ class GraphStore:
                         "section_id": section_id,
                         "entities": entities,
                         "relations": relations,
-                        "raw_text": ""
+                        "raw_text": ""  # Not stored, so empty
                     })
 
-                logger.info("Retrieved graph with {} sections using entity fallback", len(sections))
+                logger.info("Retrieved graph with {} sections", len(sections))
                 return {"sections": sections}
 
             except Exception as e:
@@ -290,36 +199,9 @@ class GraphStore:
 
                 # Get connected nodes and relations
                 context_parts = []
-                use_section_schema = await self._section_schema_exists(session, graph_id)
                 for node in relevant_nodes:
                     node_id = node["id"]
                     node_name = node["name"]
-
-                    section_text = ""
-                    if use_section_schema:
-                        section_result = await session.run(
-                            """
-                            MATCH (s:Section)-[:HAS_ENTITY]->(n:Entity {id: $node_id})
-                            RETURN s.raw_text as raw_text
-                            LIMIT 1
-                            """,
-                            node_id=node_id
-                        )
-                        section_record = await section_result.single()
-                        if section_record and section_record["raw_text"]:
-                            section_text = section_record["raw_text"].strip()
-                    else:
-                        section_result = await session.run(
-                            """
-                            MATCH (n:Entity {id: $node_id})
-                            RETURN n.raw_text as raw_text
-                            LIMIT 1
-                            """,
-                            node_id=node_id
-                        )
-                        section_record = await section_result.single()
-                        if section_record and section_record["raw_text"]:
-                            section_text = section_record["raw_text"].strip()
 
                     # Get outgoing relations
                     out_result = await session.run(
@@ -348,14 +230,10 @@ class GraphStore:
                     async for rel_record in in_result:
                         relations.append(f"{rel_record['from_name']} {rel_record['rel_type'].lower().replace('_', ' ')} {node_name}")
 
-                    section_block = f"Entity: {node_name} ({node['label']})"
-                    if section_text:
-                        section_block += f"\nSection text: {section_text}"
-
                     if relations:
-                        context_parts.append(section_block + "\n" + "\n".join(relations))
+                        context_parts.append(f"Entity: {node_name} ({node['label']})\n" + "\n".join(relations))
                     else:
-                        context_parts.append(section_block)
+                        context_parts.append(f"Entity: {node_name} ({node['label']})")
 
                 context = "\n\n".join(context_parts)
                 logger.info("Generated context with {} characters", len(context))

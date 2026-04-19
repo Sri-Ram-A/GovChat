@@ -1,4 +1,6 @@
 import os
+os.environ["HF_HOME"] = "D:/hf_cache"
+
 import tempfile
 from typing import Dict, List, Any, Optional
 
