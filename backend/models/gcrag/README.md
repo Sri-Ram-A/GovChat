@@ -25,3 +25,10 @@ PDF → Parser → Graph Extraction → Neo4j
 - Better ranking strategy
 - Larger document coverage
 - Context expansion for improved answers
+
+### 🧪 Sample Query for the sample.pdf doc
+What is the application fee for Commission Agent License?
+
+### 💬 Response
+The application fee for a Commission Agent License, also referred to as Grant Commision-Agent License in the context, is Rs.1000.
+
