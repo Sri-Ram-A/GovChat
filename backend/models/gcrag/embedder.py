@@ -1,87 +1,140 @@
 import os
-os.environ["HF_HOME"] = os.getenv("HF_HOME", "D:/hf_cache")
-import uuid
+os.environ["HF_HOME"] = "D:/hf_cache/hub"
+os.environ["TRANSFORMERS_CACHE"] = "D:/hf_cache/hub"
+
 from typing import Dict, List
 from sentence_transformers import SentenceTransformer
 from loguru import logger
 
 
-# Load the model once
-_model = None
+# Lazy-loaded model
+_model: SentenceTransformer = None
 
-def load_model():
+
+def load_model() -> SentenceTransformer:
+    """
+    Lazy load BAAI/bge-m3 model on first call.
+    
+    Returns:
+        SentenceTransformer: The loaded model
+    """
     global _model
     if _model is None:
-        logger.info("Loading BAAI/bge-m3 model...")
-        _model = SentenceTransformer('BAAI/bge-m3')
-        logger.info("Model loaded, embedding dim: {}", _model.get_sentence_embedding_dimension())
+        logger.info("Loading BAAI/bge-m3 model from cache: {}", os.environ.get("HF_HOME", "D:/hf_cache/hub"))
+        cache_folder = os.environ.get("HF_HOME", "D:/hf_cache/hub")
+        _model = SentenceTransformer(
+            "BAAI/bge-m3",
+            cache_folder=cache_folder,
+            trust_remote_code=True
+        )
+        embedding_dim = _model.get_sentence_embedding_dimension()
+        logger.info("Model loaded successfully, embedding dimension: {}", embedding_dim)
     return _model
 
 
-def generate_graph_description(graph: Dict) -> str:
+def generate_section_description(section: Dict) -> str:
     """
-    Generate a natural language description of the graph.
+    Generate a natural language description of a section's graph.
+    
+    Args:
+        section: Dict with keys {section_id, entities, relations, raw_text}
+        
+    Returns:
+        str: Natural language description, always non-empty
     """
-    sections = graph.get("sections", [])
-    if not sections:
-        return "This graph is empty."
-
-    # Collect all entities and relations
-    all_entities = {}
-    all_relations = []
-    for section in sections:
-        for entity in section.get("entities", []):
-            eid = entity["id"]
-            all_entities[eid] = entity
-        for rel in section.get("relations", []):
-            all_relations.append(rel)
-
-    # Find main entity: the one with most connections
+    entities = section.get("entities", [])
+    relations = section.get("relations", [])
+    raw_text = section.get("raw_text", "")
+    
+    # If no entities or relations, use raw_text
+    if not entities or not relations:
+        if raw_text:
+            section_id = section.get("section_id", "unknown")
+            description = f"Document section {section_id}: {raw_text[:300]}"
+            logger.debug("Generated section description from raw_text (first 200 chars)")
+            return description
+        elif entities:
+            # Fallback: list entity names
+            entity_names = [e.get("name", "") for e in entities]
+            entity_names = [n for n in entity_names if n]
+            if entity_names:
+                description = f"This section describes the following concepts: {', '.join(entity_names)}"
+                logger.debug("Generated section description from entity names")
+                return description
+        
+        # Last resort
+        return "This section has no detailed description available."
+    
+    # Find main entity (most connected)
     connection_count = {}
-    for rel in all_relations:
-        subj = rel["from"]
-        obj = rel["to"]
-        connection_count[subj] = connection_count.get(subj, 0) + 1
-        connection_count[obj] = connection_count.get(obj, 0) + 1
-
-    if not connection_count:
-        main_entity = sections[0]["entities"][0]["name"] if sections[0].get("entities") else "unknown"
-    else:
-        main_entity_id = max(connection_count, key=connection_count.get)
-        main_entity = main_entity_id
-
-    # Generate relation descriptions
+    for rel in relations:
+        from_name = rel.get("from", "")
+        to_name = rel.get("to", "")
+        connection_count[from_name] = connection_count.get(from_name, 0) + 1
+        connection_count[to_name] = connection_count.get(to_name, 0) + 1
+    
+    main_entity = max(connection_count, key=connection_count.get) if connection_count else "unknown"
+    
+    # Build relation descriptions
     relation_descriptions = []
-    for rel in all_relations:
-        subj_name = rel["from"]
-        rel_type = rel["type"]
-        obj_name = rel["to"]
-        relation_descriptions.append(f"{subj_name} {rel_type} {obj_name}")
-
+    for rel in relations:
+        from_name = rel.get("from", "")
+        rel_type = rel.get("type", "relates to")
+        to_name = rel.get("to", "")
+        relation_descriptions.append(f"{from_name} {rel_type} {to_name}")
+    
+    # Generate description
     if relation_descriptions:
-        desc = f"This graph describes {main_entity} including " + ", ".join(relation_descriptions[:5])
+        desc = f"This section describes {main_entity} including " + ", ".join(relation_descriptions[:5])
         if len(relation_descriptions) > 5:
             desc += f", and {len(relation_descriptions) - 5} more relations."
     else:
-        desc = f"This graph describes {main_entity}."
-
-    logger.info("Generated description for graph: {}", desc[:100] + "..." if len(desc) > 100 else desc)
+        desc = f"This section describes {main_entity}."
+    
+    logger.debug("Generated section description: {}...", desc[:80])
     return desc
 
 
-def embed_graph(graph: Dict) -> Dict:
+def embed_section(section: Dict, section_graph_id: str) -> Dict:
     """
-    Generate embedding for the graph.
-    Returns {"graph_id": str, "description": str, "embedding": list[float]}
+    Generate embedding for a section's graph.
+    
+    Args:
+        section: Dict with keys {section_id, entities, relations, raw_text}
+        section_graph_id: The unique ID for this section graph
+        
+    Returns:
+        Dict: {section_graph_id, description, embedding: list[float]}
     """
-    graph_id = graph.get("graph_id", str(uuid.uuid4()))
-    description = generate_graph_description(graph)
+    description = generate_section_description(section)
     model = load_model()
     embedding = model.encode(description).tolist()
-
-    logger.info("Embedded graph {} with embedding dimension {}", graph_id, len(embedding))
+    
+    logger.info(
+        "Embedded section {} with embedding dimension {}",
+        section_graph_id,
+        len(embedding)
+    )
+    
     return {
-        "graph_id": graph_id,
+        "section_graph_id": section_graph_id,
         "description": description,
         "embedding": embedding
     }
+
+
+def embed_query(query: str) -> List[float]:
+    """
+    Embed a query string.
+    
+    Args:
+        query: The query string to embed
+        
+    Returns:
+        list[float]: Query embedding
+    """
+    model = load_model()
+    embedding = model.encode(query).tolist()
+    
+    logger.debug("Embedded query with embedding dimension {}", len(embedding))
+    return embedding

@@ -1,5 +1,6 @@
 import os
-os.environ["HF_HOME"] = "D:/hf_cache"
+os.environ["HF_HOME"] = "D:/hf_cache/hub"
+os.environ["TRANSFORMERS_CACHE"] = "D:/hf_cache/hub"
 
 import re
 from typing import List, Dict, Tuple
@@ -55,7 +56,7 @@ def normalize_section_id(element: dict, idx: int) -> str:
     return f"section-{idx + 1}-p{page}-{etype.lower()}"
 
 
-def extract_entities(raw_text: str, section_id: str) -> List[Dict[str, str]]:
+def extract_entities(raw_text: str) -> List[Dict[str, str]]:
     nlp = load_spacy_model()
     doc = nlp(raw_text)
     entities: List[Dict[str, str]] = []
@@ -80,7 +81,7 @@ def extract_entities(raw_text: str, section_id: str) -> List[Dict[str, str]]:
             continue
         seen.add(key)
         entities.append({
-            "id": f"{section_id}_{ent.label_}_{len(entities) + 1}",
+            "id": f"{ent.label_}_{len(entities) + 1}",
             "label": ent.label_,
             "name": name,
         })
@@ -99,7 +100,7 @@ def extract_entities(raw_text: str, section_id: str) -> List[Dict[str, str]]:
             continue
         seen.add(key)
         entities.append({
-            "id": f"{section_id}_CONCEPT_{len(entities) + 1}",
+            "id": f"CONCEPT_{len(entities) + 1}",
             "label": "CONCEPT",
             "name": name,
         })
@@ -235,13 +236,21 @@ def extract_graph(elements: List[Dict[str, str]]) -> List[Dict[str, object]]:
             continue
 
         logger.info("Extracting section {}", section_id)
-        entities = extract_entities(raw_text, section_id)
+        entities = extract_entities(raw_text)
 
         relations, confidence = [], 0.0
-        try:
-            relations, confidence = extract_relations_rebel(raw_text)
-        except Exception as exc:
-            logger.warning("REBEL relation extraction failed for {}: {}", section_id, exc)
+        
+        # skip REBEL for very short text
+        if len(raw_text.split()) < 10:
+            relations = regex_extract_relations(raw_text)
+            confidence = 0.0
+        else:
+            try:
+                relations, confidence = extract_relations_rebel(raw_text)
+            except Exception as exc:
+                logger.warning("REBEL failed: {}", exc)
+                relations = []
+                confidence = 0.0
 
         if not relations or confidence < REBEL_CONFIDENCE_THRESHOLD:
             relations = regex_extract_relations(raw_text)

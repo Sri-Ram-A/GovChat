@@ -1,10 +1,14 @@
 import os
-os.environ["HF_HOME"] = "D:/hf_cache"
+os.environ["HF_HOME"] = "D:/hf_cache/hub"
+os.environ["TRANSFORMERS_CACHE"] = "D:/hf_cache/hub"
 
 import tempfile
-from typing import Dict, List, Any, Optional
+import uuid
+import re
+from typing import Dict, List, Optional
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, status, Form
+import httpx
+from fastapi import FastAPI, UploadFile, File, HTTPException, status, Form, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -12,10 +16,16 @@ from loguru import logger
 
 from parser import parse_document
 from extractor import extract_graph
-from graph_store import store_graph, list_graphs as list_graphs_store, delete_graph as delete_graph_store
-from embedder import embed_graph
-from vector_store import upsert_embedding, delete_embedding
-from retriever import retrieve_answer
+from graph_store import (
+    store_section_graph,
+    get_section_graph,
+    traverse_section_graph,
+    list_all_section_graphs,
+    delete_document_graphs,
+    delete_section_graph,
+)
+from embedder import embed_section, embed_query
+from vector_store import upsert_embedding, delete_embedding, search
 
 
 class QueryRequest(BaseModel):
@@ -23,17 +33,12 @@ class QueryRequest(BaseModel):
     top_k: int = 3
 
 
-class UploadMetadata(BaseModel):
-    title: str = ""
-    author: str = ""
+app = FastAPI(title="GC-RAG Per-Section Microservice", version="2.0.0")
 
-
-app = FastAPI(title="GC-RAG Microservice", version="1.0.0")
-
-# CORS middleware for Next.js frontend
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development; restrict in production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -42,120 +47,243 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_event():
+    """Initialize on startup."""
     load_dotenv()
-    logger.info("Loaded environment variables from .env")
+    logger.info("GC-RAG server started - per-section architecture")
 
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    logger.info("Health check requested")
     return {
         "status": "success",
-        "data": {
-            "message": "GC-RAG service is healthy",
-            "version": "1.0.0"
-        }
+        "message": "GC-RAG healthy"
     }
 
 
 @app.post("/upload")
 async def upload_pdf(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     title: str = Form(default=""),
     author: str = Form(default="")
 ):
-    """Upload a PDF file and run the full ingestion pipeline."""
-    logger.info("Upload request received for file: {}", file.filename)
-
     if not file.filename.lower().endswith('.pdf'):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only PDF files are supported"
-        )
+        raise HTTPException(status_code=400, detail="Only PDF files are supported")
+
+    document_id = str(uuid.uuid4())
+    content = await file.read()
+    
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    background_tasks.add_task(
+        process_document,
+        tmp_path, document_id, title, author, file.filename
+    )
+
+    return {
+        "document_id": document_id,
+        "status": "processing",
+        "message": "Document ingestion started in background"
+    }
+
+
+async def process_document(tmp_path, document_id, title, author, filename):
+    try:
+        logger.info("Background processing started for document_id: {}", document_id)
+        parsed_elements = parse_document(tmp_path)
+        meaningful = [e for e in parsed_elements if len(e.get("text", "").split()) > 3]
+        logger.info("Meaningful elements: {}", len(meaningful))
+        sections = extract_graph(meaningful)
+        logger.info("Extracted {} sections", len(sections))
+
+        for idx, section in enumerate(sections):
+            try:
+                section_graph_id = await store_section_graph(section, document_id)
+                embedding_result = embed_section(section, section_graph_id)
+                metadata = {
+                    "section_graph_id": section_graph_id,
+                    "document_id": document_id,
+                    "section_id": section.get("section_id", ""),
+                    "title": title,
+                    "author": author,
+                    "filename": filename,
+                    "description": embedding_result["description"]
+                }
+                await upsert_embedding(section_graph_id, embedding_result["embedding"], metadata)
+                logger.info("Section {}/{} done", idx + 1, len(sections))
+            except Exception as e:
+                logger.error("Section {} failed: {}", idx, e)
+                continue
+
+        logger.info("Background processing complete for document_id: {}", document_id)
+    finally:
+        os.unlink(tmp_path)
+
+
+@app.get("/documents/{document_id}/status")
+async def document_status(document_id: str):
+    sections = await list_all_section_graphs(document_id)
+    return {
+        "document_id": document_id,
+        "sections_processed": len(sections)
+    }
+
+
+async def _call_llm(context: str, question: str) -> str:
+    """
+    Call LLM via Groq API with context and question.
+    
+    Returns:
+        str: The LLM's answer
+    """
+    api_url = os.getenv("LLM_API_URL")
+    api_key = os.getenv("LLM_API_KEY")
+    model = os.getenv("LLM_MODEL", "mixtral-8x7b-32768")
+
+    if not api_url or not api_key:
+        logger.warning("LLM API credentials not configured, returning empty answer")
+        return "LLM not configured"
+
+    messages = [
+        {
+            "role": "system",
+            "content": "You are a helpful assistant. Use the provided context to answer the question accurately and concisely."
+        },
+        {
+            "role": "user",
+            "content": f"Context:\n{context}\n\nQuestion: {question}"
+        }
+    ]
 
     try:
-        # Read file content
-        content = await file.read()
-        logger.info("File content read, size: {} bytes", len(content))
-
-        # Save to temporary file for parsing
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            tmp.write(content)
-            tmp_path = tmp.name
-
-        try:
-            # Step 1: Parse document
-            logger.info("Parsing document")
-            parsed = parse_document(tmp_path)
-
-            # Step 2: Extract graph
-            logger.info("Extracting graph")
-            graph = extract_graph(parsed[:50])
-
-            # Step 3: Store graph in Neo4j
-            logger.info("Storing graph in Neo4j")
-            graph_id = await store_graph({"sections": graph})
-
-            # Step 4: Generate embedding
-            logger.info("Generating embedding")
-            embedding_result = embed_graph({"graph_id": graph_id, "sections": graph})
-
-            # Step 5: Store embedding in Qdrant
-            logger.info("Storing embedding in Qdrant")
-            success = await upsert_embedding(
-                graph_id,
-                embedding_result["embedding"],
-                {
-                    "description": embedding_result["description"],
-                    "title": title if title else "",
-                    "author": author if author else "",
-                    "filename": file.filename
-                }
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                api_url,
+                headers={"Authorization": f"Bearer {api_key}"},
+                json={"model": model, "messages": messages},
+                timeout=30.0
             )
-
-            if not success:
-                logger.error("Failed to store embedding for graph {}", graph_id)
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Failed to store embedding"
-                )
-
-            logger.info("Ingestion pipeline completed for graph {}", graph_id)
-            return {
-                "status": "success",
-                "data": {
-                    "graph_id": graph_id,
-                    "message": "Document ingested successfully"
-                }
-            }
-
-        finally:
-            # Clean up temporary file
-            os.unlink(tmp_path)
-
-    except HTTPException:
-        raise
+            response.raise_for_status()
+            data = response.json()
+            answer = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+            logger.info("LLM call successful, answer length: {}", len(answer))
+            return answer
     except Exception as e:
-        logger.error("Upload failed: {}", str(e))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Ingestion failed: {str(e)}"
-        )
+        logger.error("LLM call failed: {}", str(e))
+        return f"Error calling LLM: {str(e)}"
+
+
+def _extract_keywords(text: str, max_keywords: int = 5) -> List[str]:
+    """Extract keywords from text for graph traversal."""
+    # Simple keyword extraction: remove common words, split on whitespace
+    stop_words = {"a", "an", "the", "is", "are", "was", "were", "be", "do", "does", "did", "and", "or", "but", "in", "of", "to", "for", "with", "from", "by", "on", "at"}
+    words = re.findall(r'\b\w+\b', text.lower())
+    keywords = [w for w in words if w not in stop_words and len(w) > 2]
+    return list(dict.fromkeys(keywords))[:max_keywords]  # Unique, limit to max_keywords
 
 
 @app.post("/query")
 async def query_documents(request: QueryRequest):
-    """Query the GC-RAG system."""
+    """
+    Query the GC-RAG system with per-section retrieval.
+    
+    Pipeline:
+    1. Embed query
+    2. Search top_k sections in Qdrant
+    3. Traverse each section graph for context
+    4. Merge contexts
+    5. Call LLM with merged context
+    
+    Returns: {answer, graphs_used, confidence}
+    """
     logger.info("Query request: question='{}', top_k={}", request.question, request.top_k)
 
     try:
-        result = await retrieve_answer(request.question, request.top_k)
-        logger.info("Query completed successfully")
+        # Step 1: Embed query
+        logger.info("Embedding query")
+        query_embedding = embed_query(request.question)
+        logger.debug("Query embedded, dimension: {}", len(query_embedding))
+
+        # Step 2: Search in Qdrant
+        logger.info("Searching Qdrant for top {} sections", request.top_k)
+        hits = await search(query_embedding, top_k=request.top_k)
+        logger.info("Found {} hits", len(hits))
+
+        if not hits:
+            logger.warning("No relevant sections found")
+            return {
+                "answer": "No relevant information found in the knowledge base.",
+                "graphs_used": [],
+                "confidence": 0.0
+            }
+
+        # Step 3: Extract keywords for graph traversal
+        keywords = _extract_keywords(request.question)
+        logger.debug("Extracted keywords: {}", keywords)
+
+        # Step 4: Traverse each section graph and collect context
+        context_parts = []
+        graphs_used = []
+
+        for idx, hit in enumerate(hits):
+            try:
+                section_graph_id = hit.get("graph_id") or hit.get("metadata", {}).get("section_graph_id")
+                metadata = hit.get("metadata", {})
+                score = hit.get("score", 0.0)
+
+                logger.debug("Processing hit {}/{}: section_graph_id={}, score={}", 
+                            idx + 1, len(hits), section_graph_id, score)
+
+                # Traverse the section graph for context
+                context = await traverse_section_graph(section_graph_id, keywords)
+                context_parts.append(context)
+
+                graphs_used.append({
+                    "section_graph_id": section_graph_id,
+                    "document_id": metadata.get("document_id", ""),
+                    "section_id": metadata.get("section_id", ""),
+                    "title": metadata.get("title", ""),
+                    "score": score
+                })
+
+                logger.debug("Context retrieved for section {}", section_graph_id)
+
+            except Exception as e:
+                logger.error("Failed to process hit {}: {}", section_graph_id, str(e))
+                continue
+
+        if not context_parts:
+            logger.warning("No context could be retrieved from sections")
+            return {
+                "answer": "Failed to retrieve context from relevant sections.",
+                "graphs_used": graphs_used,
+                "confidence": 0.0
+            }
+
+        # Step 5: Merge contexts
+        merged_context = "\n---\n".join(context_parts)
+        logger.info("Merged context from {} sections, total length: {}", 
+                   len(context_parts), len(merged_context))
+        
+        logger.info("Context being sent to LLM: {}", merged_context[:500])
+
+        # Step 6: Call LLM
+        logger.info("Calling LLM with merged context")
+        answer = await _call_llm(merged_context, request.question)
+
+        # Step 7: Calculate confidence (simple heuristic based on score)
+        avg_confidence = sum(g["score"] for g in graphs_used) / len(graphs_used) if graphs_used else 0.0
+        logger.info("Query completed, confidence: {}", avg_confidence)
+
         return {
-            "status": "success",
-            "data": result
+            "answer": answer,
+            "graphs_used": graphs_used,
+            "confidence": avg_confidence
         }
+
     except Exception as e:
         logger.error("Query failed: {}", str(e))
         raise HTTPException(
@@ -166,19 +294,43 @@ async def query_documents(request: QueryRequest):
 
 @app.get("/graphs")
 async def list_all_graphs():
-    """List all stored graphs."""
+    """
+    List all section graphs grouped by document_id.
+    
+    Returns: {documents: [{document_id, section_count, sections: [...]}]}
+    """
     logger.info("List graphs request")
 
     try:
-        graphs = await list_graphs_store()
-        logger.info("Listed {} graphs", len(graphs))
-        return {
-            "status": "success",
-            "data": {
-                "graphs": graphs,
-                "count": len(graphs)
+        # Get all section graphs
+        all_sections = await list_all_section_graphs()
+        logger.info("Retrieved {} total sections", len(all_sections))
+
+        # Group by document_id
+        documents = {}
+        for section in all_sections:
+            doc_id = section.get("document_id", "unknown")
+            if doc_id not in documents:
+                documents[doc_id] = {
+                    "document_id": doc_id,
+                    "sections": []
+                }
+            documents[doc_id]["sections"].append(section)
+
+        # Add section_count
+        result_docs = [
+            {
+                **doc_info,
+                "section_count": len(doc_info["sections"])
             }
+            for doc_info in documents.values()
+        ]
+
+        logger.info("Grouped into {} documents", len(result_docs))
+        return {
+            "documents": result_docs
         }
+
     except Exception as e:
         logger.error("List graphs failed: {}", str(e))
         raise HTTPException(
@@ -187,37 +339,40 @@ async def list_all_graphs():
         )
 
 
-@app.delete("/graphs/{graph_id}")
-async def delete_specific_graph(graph_id: str):
-    """Delete a specific graph."""
-    logger.info("Delete graph request for {}", graph_id)
+@app.delete("/documents/{document_id}")
+async def delete_document(document_id: str):
+    """
+    Delete all section graphs and embeddings for a document.
+    
+    Returns: {deleted_sections: int}
+    """
+    logger.info("Delete request for document: {}", document_id)
 
     try:
-        # Delete from Neo4j
-        success_neo4j = await delete_graph_store(graph_id)
+        # Get all section graphs for this document
+        section_graphs = await list_all_section_graphs(document_id=document_id)
+        section_graph_ids = [sg["section_graph_id"] for sg in section_graphs]
+        logger.info("Found {} sections for document {}", len(section_graph_ids), document_id)
 
         # Delete from Qdrant
-        success_qdrant = await delete_embedding(graph_id)
+        for section_graph_id in section_graph_ids:
+            try:
+                await delete_embedding(section_graph_id)
+                logger.debug("Deleted embedding for section {}", section_graph_id)
+            except Exception as e:
+                logger.warning("Failed to delete embedding for section {}: {}", 
+                              section_graph_id, str(e))
 
-        if success_qdrant:
-            logger.info("Graph {} deleted successfully", graph_id)
-            return {
-                "status": "success",
-                "data": {
-                    "message": f"Graph {graph_id} deleted successfully"
-                }
-            }
-        else:
-            logger.warning("Partial deletion for graph {}: Neo4j={}, Qdrant={}", graph_id, success_neo4j, success_qdrant)
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to delete graph from all stores"
-            )
+        # Delete from Neo4j
+        deleted_count = await delete_document_graphs(document_id)
+        logger.info("Deleted {} sections from Neo4j for document {}", deleted_count, document_id)
 
-    except HTTPException:
-        raise
+        return {
+            "deleted_sections": deleted_count
+        }
+
     except Exception as e:
-        logger.error("Delete graph failed: {}", str(e))
+        logger.error("Delete document failed: {}", str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Delete failed: {str(e)}"

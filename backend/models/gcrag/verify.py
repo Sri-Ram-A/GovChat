@@ -1,86 +1,40 @@
-import sys
-print(f"Python: {sys.version}")
+# # test_new_arch.py
+# import asyncio
+# from dotenv import load_dotenv
+# load_dotenv()
 
-errors = []
+# from graph_store import list_all_section_graphs
+# from vector_store import list_all
 
-try:
-    import fastapi
-    print(f"✅ fastapi: {fastapi.__version__}")
-except Exception as e:
-    errors.append(f"❌ fastapi: {e}")
+# async def main():
+#     # Check Neo4j
+#     sections = await list_all_section_graphs()
+#     print(f"Neo4j section graphs: {len(sections)}")
+#     for s in sections[:3]:
+#         print(f"  {s}")
 
-try:
-    import uvicorn
-    print(f"✅ uvicorn: {uvicorn.__version__}")
-except Exception as e:
-    errors.append(f"❌ uvicorn: {e}")
+#     # Check Qdrant
+#     embeddings = await list_all()
+#     print(f"\nQdrant embeddings: {len(embeddings)}")
+#     for e in embeddings[:3]:
+#         print(f"  {e}")
 
-try:
-    import pdfplumber
-    print(f"✅ pdfplumber: {pdfplumber.__version__}")
-except Exception as e:
-    errors.append(f"❌ pdfplumber: {e}")
+# asyncio.run(main())
 
-try:
-    import spacy
-    nlp = spacy.load("en_core_web_lg")
-    print(f"✅ spacy: {spacy.__version__} + en_core_web_lg loaded")
-except Exception as e:
-    errors.append(f"❌ spacy: {e}")
+# test_farmer3.py
+import asyncio
+from dotenv import load_dotenv
+load_dotenv()
 
-try:
-    import neo4j
-    print(f"✅ neo4j: {neo4j.__version__}")
-except Exception as e:
-    errors.append(f"❌ neo4j: {e}")
+from vector_store import list_all
 
-try:
-    from qdrant_client import QdrantClient
-    print(f"✅ qdrant-client: imported")
-except Exception as e:
-    errors.append(f"❌ qdrant-client: {e}")
+async def main():
+    items = await list_all()
+    for item in items:
+        desc = item['metadata'].get('description', '')
+        section_id = item['metadata'].get('section_id', '')
+        if '2 day' in desc.lower() or 'farmer reg' in desc.lower() or 'registration' in desc.lower():
+            print(f"Section: {section_id}")
+            print(f"Description: {desc}\n")
 
-try:
-    from sentence_transformers import SentenceTransformer
-    print(f"✅ sentence-transformers: imported")
-except Exception as e:
-    errors.append(f"❌ sentence-transformers: {e}")
-
-try:
-    from langgraph.graph import StateGraph
-    print(f"✅ langgraph: imported")
-except Exception as e:
-    errors.append(f"❌ langgraph: {e}")
-
-try:
-    from unstructured.partition.pdf import partition_pdf
-    print(f"✅ unstructured: imported")
-except Exception as e:
-    errors.append(f"❌ unstructured: {e}")
-    
-
-try:
-    import loguru
-    print(f"✅ loguru: imported")
-except Exception as e:
-    errors.append(f"❌ loguru: {e}")
-
-try:
-    import httpx
-    print(f"✅ httpx: {httpx.__version__}")
-except Exception as e:
-    errors.append(f"❌ httpx: {e}")
-
-try:
-    import dotenv
-    print(f"✅ python-dotenv: imported")
-except Exception as e:
-    errors.append(f"❌ python-dotenv: {e}")
-
-print("\n--- SUMMARY ---")
-if errors:
-    print(f"❌ {len(errors)} package(s) failed:")
-    for e in errors:
-        print(f"  {e}")
-else:
-    print("✅ All packages installed successfully. Ready to build.")
+asyncio.run(main())

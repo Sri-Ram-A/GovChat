@@ -98,7 +98,7 @@ class VectorStore:
         await self.initialize()
 
         try:
-            points, _ = await self.client.scroll(collection_name=self.COLLECTION_NAME, limit=100)
+            points, _ = await self.client.scroll(collection_name=self.COLLECTION_NAME, limit=1000)
             items = [
                {
                  "graph_id": str(point.id),
