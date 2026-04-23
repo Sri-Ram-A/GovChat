@@ -8,7 +8,7 @@ import re
 from typing import Dict, List, Optional
 
 import httpx
-from fastapi import FastAPI, UploadFile, File, HTTPException, status, Form, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, HTTPException, status, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -63,73 +63,120 @@ async def health_check():
 
 @app.post("/upload")
 async def upload_pdf(
-    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     title: str = Form(default=""),
     author: str = Form(default="")
 ):
+    """
+    Upload a PDF and process per-section.
+    
+    Pipeline:
+    1. Parse document -> elements
+    2. Extract sections from elements
+    3. For each section:
+       - Store in Neo4j as section graph
+       - Generate embedding
+       - Upsert to Qdrant vector store
+    
+    Returns: {document_id, sections_processed, section_graph_ids}
+    """
+    logger.info("Upload request received: file='{}', title='{}', author='{}'", 
+                file.filename, title, author)
+
     if not file.filename.lower().endswith('.pdf'):
-        raise HTTPException(status_code=400, detail="Only PDF files are supported")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only PDF files are supported"
+        )
 
     document_id = str(uuid.uuid4())
-    content = await file.read()
-    
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-        tmp.write(content)
-        tmp_path = tmp.name
+    logger.info("Generated document_id: {}", document_id)
 
-    background_tasks.add_task(
-        process_document,
-        tmp_path, document_id, title, author, file.filename
-    )
-
-    return {
-        "document_id": document_id,
-        "status": "processing",
-        "message": "Document ingestion started in background"
-    }
-
-
-async def process_document(tmp_path, document_id, title, author, filename):
     try:
-        logger.info("Background processing started for document_id: {}", document_id)
-        parsed_elements = parse_document(tmp_path)
-        meaningful = [e for e in parsed_elements if len(e.get("text", "").split()) > 3]
-        logger.info("Meaningful elements: {}", len(meaningful))
-        sections = extract_graph(meaningful)
-        logger.info("Extracted {} sections", len(sections))
+        # Read file content
+        content = await file.read()
+        logger.info("File read: {} bytes", len(content))
 
-        for idx, section in enumerate(sections):
-            try:
-                section_graph_id = await store_section_graph(section, document_id)
-                embedding_result = embed_section(section, section_graph_id)
-                metadata = {
-                    "section_graph_id": section_graph_id,
-                    "document_id": document_id,
-                    "section_id": section.get("section_id", ""),
-                    "title": title,
-                    "author": author,
-                    "filename": filename,
-                    "description": embedding_result["description"]
-                }
-                await upsert_embedding(section_graph_id, embedding_result["embedding"], metadata)
-                logger.info("Section {}/{} done", idx + 1, len(sections))
-            except Exception as e:
-                logger.error("Section {} failed: {}", idx, e)
-                continue
+        # Save to temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            tmp.write(content)
+            tmp_path = tmp.name
 
-        logger.info("Background processing complete for document_id: {}", document_id)
-    finally:
-        os.unlink(tmp_path)
+        try:
+            # Step 1: Parse document
+            logger.info("Parsing document from {}", tmp_path)
+            parsed_elements = parse_document(tmp_path)
+            logger.info("Parsed {} elements", len(parsed_elements))
 
+            # Step 2: Extract graph (sections)
+            logger.info("Extracting sections from elements")
+            # filter out very short sections before processing
+            meaningful = [e for e in parsed_elements if len(e.get("text", "").split()) > 8]
+            sections = extract_graph(meaningful)
+            logger.info("Extracted {} sections", len(sections))
 
-@app.get("/documents/{document_id}/status")
-async def document_status(document_id: str):
-    sections = await list_all_section_graphs(document_id)
-    return {
-        "document_id": document_id,
-        "sections_processed": len(sections)
-    }
+            section_graph_ids = []
+
+            # Step 3: Process each section
+            for idx, section in enumerate(sections):
+                try:
+                    logger.info("Processing section {}/{}", idx + 1, len(sections))
+
+                    # 3a. Store section in Neo4j
+                    section_graph_id = await store_section_graph(section, document_id)
+                    logger.debug("Stored section graph: {}", section_graph_id)
+
+                    # 3b. Generate embedding
+                    embedding_result = embed_section(section, section_graph_id)
+                    logger.debug("Generated embedding for section {}", section_graph_id)
+
+                    # 3c. Upsert embedding to Qdrant
+                    metadata = {
+                        "section_graph_id": section_graph_id,
+                        "document_id": document_id,
+                        "section_id": section.get("section_id", ""),
+                        "title": title,
+                        "author": author,
+                        "filename": file.filename,
+                        "description": embedding_result["description"]
+                    }
+                    success = await upsert_embedding(
+                        section_graph_id,
+                        embedding_result["embedding"],
+                        metadata
+                    )
+
+                    if success:
+                        section_graph_ids.append(section_graph_id)
+                        logger.info("Section {}/{} processed successfully", idx + 1, len(sections))
+                    else:
+                        logger.warning("Failed to upsert embedding for section {}", section_graph_id)
+
+                except Exception as e:
+                    logger.error("Failed to process section {}: {}", idx, str(e))
+                    continue
+
+            logger.info("Upload completed: document_id={}, sections_processed={}", 
+                       document_id, len(section_graph_ids))
+            return {
+                "document_id": document_id,
+                "sections_processed": len(section_graph_ids),
+                "section_graph_ids": section_graph_ids
+            }
+
+        finally:
+            # Clean up temporary file
+            os.unlink(tmp_path)
+            logger.debug("Cleaned up temporary file")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Upload failed: {}", str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Upload failed: {str(e)}"
+        )
 
 
 async def _call_llm(context: str, question: str) -> str:
@@ -267,8 +314,6 @@ async def query_documents(request: QueryRequest):
         merged_context = "\n---\n".join(context_parts)
         logger.info("Merged context from {} sections, total length: {}", 
                    len(context_parts), len(merged_context))
-        
-        logger.info("Context being sent to LLM: {}", merged_context[:500])
 
         # Step 6: Call LLM
         logger.info("Calling LLM with merged context")
@@ -376,6 +421,32 @@ async def delete_document(document_id: str):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Delete failed: {str(e)}"
+        )
+
+
+@app.get("/documents/{document_id}/status")
+async def document_status(document_id: str):
+    """
+    Return current indexing status for a document.
+
+    Returns: {document_id, status, sections_indexed}
+    """
+    logger.info("Status request for document: {}", document_id)
+    try:
+        section_graphs = await list_all_section_graphs(document_id=document_id)
+        sections_indexed = len(section_graphs)
+        status_text = "ready" if sections_indexed > 0 else "processing"
+
+        return {
+            "document_id": document_id,
+            "status": status_text,
+            "sections_indexed": sections_indexed,
+        }
+    except Exception as e:
+        logger.error("Status lookup failed for {}: {}", document_id, str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Status lookup failed: {str(e)}"
         )
 
 
