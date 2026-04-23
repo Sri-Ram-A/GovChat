@@ -1,0 +1,19 @@
+# Backend requirements for the Django auth/API server
+Django
+djangorestframework
+djangorestframework-simplejwt
+django-cors-headers
+django-extensions
+drf-spectacular
+drf-api-logger
+django-schema-viewer
+
+pillow
+Faker
+python-dotenv
+loguru
+daphne
+channels
+
+# Optional helper libraries used by backend services
+requests
