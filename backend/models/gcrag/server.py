@@ -111,7 +111,7 @@ async def upload_pdf(
             # Step 2: Extract graph (sections)
             logger.info("Extracting sections from elements")
             # filter out very short sections before processing
-            meaningful = [e for e in parsed_elements if len(e.get("text", "").split()) > 8]
+            meaningful = [e for e in parsed_elements if len(e.get("text", "").split()) > 1]
             sections = extract_graph(meaningful)
             logger.info("Extracted {} sections", len(sections))
 
@@ -314,6 +314,8 @@ async def query_documents(request: QueryRequest):
         merged_context = "\n---\n".join(context_parts)
         logger.info("Merged context from {} sections, total length: {}", 
                    len(context_parts), len(merged_context))
+        
+        logger.info("Context being sent to LLM: {}", merged_context[:800])
 
         # Step 6: Call LLM
         logger.info("Calling LLM with merged context")

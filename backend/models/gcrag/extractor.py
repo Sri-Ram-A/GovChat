@@ -2,269 +2,309 @@ import os
 os.environ["HF_HOME"] = "D:/hf_cache/hub"
 os.environ["TRANSFORMERS_CACHE"] = "D:/hf_cache/hub"
 
-import re
-from typing import List, Dict, Tuple
+import asyncio
+import json
+from typing import List, Dict
 
-import spacy
-import torch
+import httpx
+from dotenv import load_dotenv
 from loguru import logger
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Groq configuration
+GROQ_API_KEY = os.getenv("LLM_API_KEY")
+GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
+
+if not GROQ_API_KEY:
+    logger.error("GROQ_API_KEY environment variable not set")
 
 
-ENTITY_LABELS = {
-    "ORG",
-    "PERSON",
-    "GPE",
-    "DATE",
-    "MONEY",
-    "PERCENT",
-    "LAW",
-    "PRODUCT",
-}
-REBEL_MODEL_NAME = "Babelscape/rebel-large"
-REBEL_CONFIDENCE_THRESHOLD = 0.30
+def chunk_elements(elements: List[Dict]) -> List[Dict]:
+    import re
+    logger.info("Chunking {} elements into logical chunks", len(elements))
 
-_nlp = None
-_rebel_tokenizer = None
-_rebel_model = None
-
-
-def load_spacy_model():
-    global _nlp
-    if _nlp is None:
-        logger.info("Loading spaCy model: en_core_web_lg")
-        try:
-            _nlp = spacy.load("en_core_web_lg")
-        except OSError as exc:
-            logger.error("spaCy model en_core_web_lg not found: {}", exc)
-            raise
-    return _nlp
-
-
-def load_rebel_model():
-    global _rebel_tokenizer, _rebel_model
-    if _rebel_model is None or _rebel_tokenizer is None:
-        logger.info("Loading REBEL model: {}", REBEL_MODEL_NAME)
-        _rebel_tokenizer = AutoTokenizer.from_pretrained(REBEL_MODEL_NAME, use_fast=True)
-        _rebel_model = AutoModelForSeq2SeqLM.from_pretrained(REBEL_MODEL_NAME)
-    return _rebel_tokenizer, _rebel_model
-
-
-def normalize_section_id(element: dict, idx: int) -> str:
-    page = element.get("page_number", 0)
-    etype = element.get("element_type", "section")
-    return f"section-{idx + 1}-p{page}-{etype.lower()}"
-
-
-def extract_entities(raw_text: str) -> List[Dict[str, str]]:
-    nlp = load_spacy_model()
-    doc = nlp(raw_text)
-    entities: List[Dict[str, str]] = []
-    seen = set()
-
-    NOISE_PHRASES = {
-    "a crucial component", "a vital role", "their ability",
-    "this paper", "a systematic review", "the reviewed studies",
-    "recent advancements", "many existing", "large-scale",
-    "online platforms", "public issues"
+    FIELD_LABELS = {
+        "eligibility", "supporting document", "application fee",
+        "service charge", "delivery time", "procedure for applying",
     }
 
-    # spaCy named entities
-    for ent in doc.ents:
-        if ent.label_ not in ENTITY_LABELS:
-            continue
-        name = ent.text.strip()
-        if len(name) < 3:
-            continue
-        key = (ent.label_, name.lower())
-        if key in seen:
-            continue
-        seen.add(key)
-        entities.append({
-            "id": f"{ent.label_}_{len(entities) + 1}",
-            "label": ent.label_,
-            "name": name,
-        })
+    def is_field_label(t: str) -> bool:
+        t = t.lower().strip().rstrip(":")
+        return (t in FIELD_LABELS or
+                t.startswith("eligibility") or
+                t.startswith("supporting doc") or
+                t.startswith("application fee") or
+                t.startswith("service charge") or
+                t.startswith("delivery time") or
+                t.startswith("procedure for"))
 
-    # noun chunk extraction for technical terms spaCy misses
-    for chunk in doc.noun_chunks:
-        name = chunk.text.strip()
-        if len(name) < 4 or len(name.split()) < 2:
-            continue
-        key = ("CONCEPT", name.lower())
-        if name.lower() in NOISE_PHRASES:
-           continue
-        if name.lower().startswith(("a ", "an ", "the ", "their ", "this ", "these ")):
-           continue
-        if key in seen:
-            continue
-        seen.add(key)
-        entities.append({
-            "id": f"CONCEPT_{len(entities) + 1}",
-            "label": "CONCEPT",
-            "name": name,
-        })
+    def is_service_title(t: str) -> bool:
+        t_stripped = t.strip()
+        t_lower = t_stripped.lower()
+        
+        # exclude procedure steps
+        if any(t_lower.startswith(kw) for kw in [
+            "applicant will", "department will", "once reviewed", 
+            "once processed", "applicant submit"
+        ]):
+            return False
+        
+        # exclude if it contains only "applicant" actions
+        if "will submit" in t_lower or "will review" in t_lower or "will receive" in t_lower:
+            return False
+        
+        # valid service title: starts with number+dot OR "department:"
+        return (bool(re.match(r'^\d+\.', t_stripped)) or
+                t_lower.startswith("department:"))
 
-    logger.debug("Extracted {} entities", len(entities))
-    return entities
+    chunks = []
+    current_chunk = None
+    chunk_counter = 0
+
+    for element in elements:
+        element_type = element.get("element_type", "").strip().lower()
+        text = element.get("text", "").strip()
+        page_number = element.get("page_number", 0)
+
+        if element_type == "title":
+            logger.debug("Title: '{}' | field={} | service={}",
+                        text[:60], is_field_label(text), is_service_title(text))
+
+            if is_field_label(text):
+                if current_chunk:
+                    current_chunk["elements"].append(element)
+                    current_chunk["raw_text"] += "\n" + text
+
+            elif is_service_title(text) or current_chunk is None:
+                if current_chunk and current_chunk.get("elements"):
+                    chunks.append(current_chunk)
+                chunk_counter += 1
+                current_chunk = {
+                    "chunk_id": f"chunk_{chunk_counter}",
+                    "title": text,
+                    "elements": [element],
+                    "raw_text": text,
+                    "page_number": page_number,
+                }
+            else:
+                if current_chunk:
+                    current_chunk["elements"].append(element)
+                    current_chunk["raw_text"] += "\n" + text
+
+        elif element_type in ["narrativetext", "listitem", "text"]:
+            # check if this listitem is actually a service name (e.g. "1. Application To Grant...")
+            procedure_keywords = ["applicant will", "department will", "once reviewed", 
+                      "once processed", "will submit", "will review", "will receive"]
+            is_procedure = any(text.lower().startswith(kw) or kw in text.lower() 
+                   for kw in procedure_keywords)
+
+            if element_type == "listitem" and re.match(r'^\d+\.', text.strip()) and not is_procedure:
+                # start new chunk for this service
+                if current_chunk and current_chunk.get("elements"):
+                    chunks.append(current_chunk)
+                chunk_counter += 1
+                current_chunk = {
+                    "chunk_id": f"chunk_{chunk_counter}",
+                    "title": text,
+                    "elements": [element],
+                    "raw_text": text,
+                    "page_number": page_number,
+                }
+            elif current_chunk is not None:
+                current_chunk["elements"].append(element)
+                current_chunk["raw_text"] += "\n" + text
+            else:
+                chunk_counter += 1
+                current_chunk = {
+                    "chunk_id": f"chunk_{chunk_counter}",
+                    "title": f"Untitled {chunk_counter}",
+                    "elements": [element],
+                    "raw_text": text,
+                    "page_number": page_number,
+                }
+
+    if current_chunk and current_chunk.get("elements"):
+        chunks.append(current_chunk)
+
+    logger.info("Created {} chunks from {} elements", len(chunks), len(elements))
+    return chunks
 
 
-def parse_rebel_output(output_text: str) -> List[Dict[str, str]]:
+async def call_groq_api(chunk_raw_text: str) -> Dict:
     """
-    REBEL uses special tokens: <triplet> <subj> <obj>
-    Format: <triplet> subject <subj> object <obj> relation
+    Call Groq API to extract entities and relations from text.
+    
+    Args:
+        chunk_raw_text: The raw text to extract from
+    
+    Returns:
+        Dictionary with keys: entities (list), relations (list)
     """
-    triples = []
-    current_subj = None
-    current_obj = None
-
-    tokens = output_text.split("<")
-    for token in tokens:
-        token = token.strip()
-        if token.startswith("triplet>"):
-            current_subj = token.replace("triplet>", "").strip()
-            current_obj = None
-        elif token.startswith("subj>"):
-            current_obj = token.replace("subj>", "").strip()
-        elif token.startswith("obj>") and current_subj and current_obj:
-            relation = token.replace("obj>", "").strip()
-            if current_subj and current_obj and relation:
-                triples.append({
-                    "from": current_subj,
-                    "type": relation,
-                    "to": current_obj
-                })
-
-    logger.debug("Parsed {} triples from REBEL output", len(triples))
-    return triples
-
-
-def evaluate_generation_confidence(outputs) -> float:
-    if not hasattr(outputs, "scores") or outputs.scores is None:
-        return 0.0
-
-    score_values: List[float] = []
-    for score in outputs.scores:
-        probs = torch.softmax(score, dim=-1)
-        top_prob, _ = probs.max(dim=-1)
-        score_values.append(top_prob.mean().item())
-
-    if not score_values:
-        return 0.0
-    return float(sum(score_values) / len(score_values))
-
-
-def extract_relations_rebel(raw_text: str) -> Tuple[List[Dict[str, str]], float]:
-    tokenizer, model = load_rebel_model()
-    logger.info("Running REBEL relation extraction")
-
-    inputs = tokenizer(
-        raw_text,
-        return_tensors="pt",
-        truncation=True,
-        max_length=1024,
+    system_prompt = (
+        "You are a knowledge graph extractor. Extract entities and relations from the given text. "
+        "Return ONLY valid JSON, no markdown, no explanation."
     )
 
-    outputs = model.generate(
-    **inputs,
-    max_length=512,        # increased from 256
-    num_beams=4,
-    num_return_sequences=3,  # get 3 candidate outputs
-    early_stopping=True,
-    output_scores=True,
-    return_dict_in_generate=True,
-    )
-    # parse all sequences, not just first
-    all_relations = []
-    for seq in outputs.sequences:
-        generated_text = tokenizer.decode(seq, skip_special_tokens=False)
-        relations = parse_rebel_output(generated_text)
-        all_relations.extend(relations)
+    user_prompt = f"""Extract entities and relations from this text and return JSON in this exact format:
+{{
+  "entities": [
+    {{"id": "e1", "label": "CONCEPT", "name": "entity name"}}
+  ],
+  "relations": [
+    {{"from": "entity name", "type": "relation type", "to": "entity name"}}
+  ]
+}}
 
-    # deduplicate
-    seen = set()
-    unique_relations = []
-    for r in all_relations:
-       key = (r["from"].lower().strip(), r["type"].lower().strip(), r["to"].lower().strip())
-       if key not in seen:
-          seen.add(key)
-          unique_relations.append(r)
+Labels must be one of: CONCEPT, ORG, PERSON, DATE, MONEY, LAW, PRODUCT, LOCATION
+Relation types should be snake_case like: has_fee, requires_document, managed_by, has_eligibility, has_deadline, part_of, subclass_of
 
-    confidence = evaluate_generation_confidence(outputs)
-    logger.debug("REBEL generated {} unique relations with confidence {:.3f}", 
-             len(unique_relations), confidence)
-    return unique_relations, confidence
+Text:
+{chunk_raw_text}"""
+
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "model": GROQ_MODEL,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        "temperature": 0.3,
+        "max_tokens": 2048,
+    }
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        try:
+            response = await client.post(GROQ_ENDPOINT, json=payload, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+
+            # Extract the content from the response
+            content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+            logger.debug("Groq response: {}", content[:200])
+
+            # Parse JSON from content
+            try:
+                # Try to extract JSON from the response
+                cleaned = content.strip()
+                if cleaned.startswith("```"):
+                    cleaned = cleaned.split("```")[1]
+                    if cleaned.startswith("json"):
+                         cleaned = cleaned[4:]
+                cleaned = cleaned.strip()
+                result = json.loads(cleaned)
+                entities = result.get("entities", [])
+                relations = result.get("relations", [])
+                logger.debug("Extracted {} entities and {} relations", len(entities), len(relations))
+                return {"entities": entities, "relations": relations}
+            except json.JSONDecodeError as e:
+                logger.warning("Failed to parse Groq JSON response: {}", e)
+                return {"entities": [], "relations": []}
+
+        except Exception as e:
+            logger.error("Error calling Groq API: {}", e)
+            return {"entities": [], "relations": []}
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 429:
+                logger.warning("Rate limited by Groq, waiting 10 seconds...")
+                await asyncio.sleep(10)
+                # retry once
+                response = await client.post(GROQ_ENDPOINT, json=payload, headers=headers)
+                response.raise_for_status()
+                data = response.json()
+            else:
+                logger.error("Groq API error: {} {}", e.response.status_code, e.response.text)
+                return {"entities": [], "relations": []}
 
 
+async def extract_graph_async(chunks: List[Dict]) -> List[Dict]:
+    """
+    Async function to extract graph data from chunks using Groq LLM.
+    
+    Args:
+        chunks: list of chunks from chunk_elements()
+    
+    Returns:
+        list of extraction results with keys: section_id, entities, relations, raw_text
+    """
+    results = []
+    total_chunks = len(chunks)
 
+    for idx, chunk in enumerate(chunks):
+        logger.info("Processing chunk {}/{}: {}", idx + 1, total_chunks, chunk["chunk_id"])
 
-def regex_extract_relations(raw_text: str) -> List[Dict[str, str]]:
-    logger.info("Applying rule-based relation extraction fallback")
-    patterns = [
-    (r"(?P<subj>[A-Z][\w\s]{1,60}?)\s+eligible for\s+(?P<obj>[A-Z][\w\s]{1,60}?)[,.]", "eligible_for"),
-    (r"(?P<subj>[A-Z][\w\s]{1,60}?)\s+requires\s+(?P<obj>[A-Z][\w\s]{1,60}?)[,.]", "requires"),
-    (r"(?P<subj>[A-Z][\w\s]{1,60}?)\s+provides\s+(?P<obj>[A-Z][\w\s]{1,60}?)[,.]", "provides"),
-    (r"(?P<subj>[A-Z][\w\s]{1,60}?)\s+managed by\s+(?P<obj>[A-Z][\w\s]{1,60}?)[,.]", "managed_by"),
-    (r"(?P<subj>[A-Z][\w\s]{1,60}?)\s+is used (?:for|in)\s+(?P<obj>[A-Z][\w\s]{1,60}?)[,.]", "used_in"),
-    (r"(?P<subj>[A-Z][\w\s]{1,60}?)\s+is a component of\s+(?P<obj>[A-Z][\w\s]{1,60}?)[,.]", "component_of"),
-    (r"(?P<subj>[A-Z][\w\s]{1,60}?)\s+based on\s+(?P<obj>[A-Z][\w\s]{1,60}?)[,.]", "based_on"),
-    (r"(?P<subj>[A-Z][\w\s]{1,60}?)\s+proposed by\s+(?P<obj>[A-Z][\w\s]{1,60}?)[,.]", "proposed_by"),
-]
-
-    relations: List[Dict[str, str]] = []
-    for pattern, relation_type in patterns:
-        for match in re.finditer(pattern, raw_text, flags=re.IGNORECASE):
-            subj = match.group("subj").strip()
-            obj = match.group("obj").strip()
-            if subj and obj:
-                relations.append({"from": subj, "type": relation_type, "to": obj})
-
-    logger.debug("Rule-based extractor found {} relations", len(relations))
-    return relations
-
-
-def extract_graph(elements: List[Dict[str, str]]) -> List[Dict[str, object]]:
-    logger.info("Starting graph extraction for {} document sections", len(elements))
-    sections: List[Dict[str, object]] = []
-
-    for idx, element in enumerate(elements):
-        section_id = element.get("section_id") or normalize_section_id(element, idx)
-        raw_text = element.get("text", "").strip()
+        chunk_id = chunk["chunk_id"]
+        raw_text = chunk["raw_text"].strip()
 
         if not raw_text:
-            logger.warning("Skipping empty section: {}", section_id)
+            logger.warning("Skipping empty chunk: {}", chunk_id)
+            results.append({
+                "section_id": chunk_id,
+                "entities": [],
+                "relations": [],
+                "raw_text": "",
+            })
             continue
 
-        logger.info("Extracting section {}", section_id)
-        entities = extract_entities(raw_text)
+        # Call Groq API
+        extraction = await call_groq_api(raw_text)
 
-        relations, confidence = [], 0.0
-        
-        # skip REBEL for very short text
-        if len(raw_text.split()) < 10:
-            relations = regex_extract_relations(raw_text)
-            confidence = 0.0
-        else:
-            try:
-                relations, confidence = extract_relations_rebel(raw_text)
-            except Exception as exc:
-                logger.warning("REBEL failed: {}", exc)
-                relations = []
-                confidence = 0.0
+        results.append({
+            "section_id": chunk_id,
+            "entities": extraction.get("entities", []),
+            "relations": extraction.get("relations", []),
+            "raw_text": raw_text,
+        })
 
-        if not relations or confidence < REBEL_CONFIDENCE_THRESHOLD:
-            relations = regex_extract_relations(raw_text)
-            if not relations:
-                logger.debug("No relations found for section {}", section_id)
+        # Rate limiting: sleep 0.5 seconds between Groq calls
+        if idx < total_chunks - 1:
+            await asyncio.sleep(2)
 
-        sections.append(
-            {
-                "section_id": section_id,
-                "entities": entities,
-                "relations": relations,
-                "raw_text": raw_text,
-            }
-        )
+    logger.info("Completed extraction for {} chunks", len(results))
+    return results
 
-    logger.info("Completed graph extraction for {} sections", len(sections))
-    return sections
+
+def extract_graph(elements: List[Dict]) -> List[Dict]:
+    """
+    Main function to extract knowledge graph from document elements.
+    
+    This is a synchronous function that internally uses asyncio.run() for
+    async Groq API calls. It orchestrates the full extraction pipeline:
+    1. Chunk elements into logical sections
+    2. For each chunk, call Groq LLM to extract entities and relations
+    
+    Args:
+        elements: list of parsed elements from parser.py [{page_number, element_type, text}]
+    
+    Returns:
+        list of extraction results with keys: section_id, entities, relations, raw_text
+    """
+    logger.info("Starting knowledge graph extraction for {} elements", len(elements))
+
+    # Step 1: Chunk elements into logical sections
+    chunks = chunk_elements(elements)
+
+    # Step 2: Extract graph data from chunks using Groq (async)
+# Step 2: Extract graph data from chunks using Groq (async)
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop and loop.is_running():
+        # We're inside FastAPI - run in a separate thread with its own event loop
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(lambda: asyncio.run(extract_graph_async(chunks)))
+            results = future.result(timeout=300)  # 5 min timeout
+    else:
+        results = asyncio.run(extract_graph_async(chunks))
+
+    logger.info("Knowledge graph extraction completed: {} sections processed", len(results))
+    return results

@@ -329,15 +329,9 @@ class GraphStore:
                         rel_text = f"  ← {record['rel_type'].lower().replace('_', ' ')} ← {record['from_name']}"
                         context_parts.append(rel_text)
 
-                logger.info("Generated context with {} matched entities", len(context_parts))
-                raw_text_result = await session.run(
-    "MATCH (s:Section {id: $sgid}) RETURN s.raw_text as raw_text",
-    sgid=section_graph_id
-)
-                raw_record = await raw_text_result.single()
-                if raw_record and raw_record["raw_text"]:
-                    context_parts.append(f"Raw text: {raw_record['raw_text']}")
-                return "\n".join(context_parts)
+                context = "\n".join(context_parts)
+                logger.info("Generated context with {} matched entities", len(matched_entities))
+                return context
 
             except Exception as e:
                 logger.error("Failed to traverse section graph {}: {}", section_graph_id, e)

@@ -1,20 +1,18 @@
-# test_neo4j_check.py
+# test_descriptions.py
 import asyncio
 from dotenv import load_dotenv
 load_dotenv()
 
-from graph_store import get_graph, list_graphs
+from vector_store import list_all
 
 async def main():
-    graphs = await list_graphs()
-    print(f"Total graphs: {len(graphs)}")
-    
-    for g in graphs:
-        print(f"\nGraph: {g['graph_id']} | Nodes: {g['node_count']}")
-        full = await get_graph(g['graph_id'])
-        for section in full['sections'][:3]:
-            print(f"\n  Section: {section['section_id']}")
-            print(f"  Entities: {[e['name'] for e in section['entities'][:5]]}")
-            print(f"  Relations: {section['relations'][:2]}")
+    items = await list_all()
+    print(f"Total: {len(items)}")
+    for item in items:
+        desc = item['metadata'].get('description', '')
+        section_id = item['metadata'].get('section_id', '')
+        if 'farmer' in desc.lower() or 'farmer' in section_id.lower() or 'registration' in desc.lower():
+            print(f"\nSection: {section_id}")
+            print(f"Description: {desc}")
 
 asyncio.run(main())
