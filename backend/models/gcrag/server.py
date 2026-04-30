@@ -26,6 +26,7 @@ from graph_store import (
 )
 from embedder import embed_section, embed_query
 from vector_store import upsert_embedding, delete_embedding, search, list_all
+from orchestrator import process_query
 
 
 class QueryRequest(BaseModel):
@@ -232,46 +233,151 @@ def _extract_keywords(text: str, max_keywords: int = 5) -> List[str]:
     return list(dict.fromkeys(keywords))[:max_keywords]  # Unique, limit to max_keywords
 
 
+# @app.post("/query")
+# async def query_documents(request: QueryRequest):
+#     """
+#     Query the GC-RAG system with per-section retrieval.
+    
+#     Pipeline:
+#     1. Embed query
+#     2. Search top_k sections in Qdrant
+#     3. Traverse each section graph for context
+#     4. Merge contexts
+#     5. Call LLM with merged context
+    
+#     Returns: {answer, graphs_used, confidence}
+#     """
+#     logger.info("Query request: question='{}', top_k={}", request.question, request.top_k)
+
+#     try:
+#         # Step 1: Embed query
+#         logger.info("Embedding query")
+#         query_embedding = embed_query(request.question)
+#         logger.debug("Query embedded, dimension: {}", len(query_embedding))
+
+#         # Step 2: Search in Qdrant
+#         logger.info("Searching Qdrant for top {} sections", request.top_k)
+#         hits = await search(query_embedding, top_k=request.top_k)
+#         logger.info("Found {} hits", len(hits))
+
+#         if not hits:
+#             logger.warning("No relevant sections found")
+#             return {
+#                 "answer": "No relevant information found in the knowledge base.",
+#                 "graphs_used": [],
+#                 "confidence": 0.0
+#             }
+
+#         # Step 3: Extract keywords for graph traversal
+#         keywords = _extract_keywords(request.question)
+#         logger.debug("Extracted keywords: {}", keywords)
+
+#         # Step 4: Traverse each section graph and collect context
+#         context_parts = []
+#         graphs_used = []
+
+#         for idx, hit in enumerate(hits):
+#             try:
+#                 section_graph_id = hit.get("graph_id") or hit.get("metadata", {}).get("section_graph_id")
+#                 metadata = hit.get("metadata", {})
+#                 score = hit.get("score", 0.0)
+
+#                 logger.debug("Processing hit {}/{}: section_graph_id={}, score={}", 
+#                             idx + 1, len(hits), section_graph_id, score)
+
+#                 # Traverse the section graph for context
+#                 context = await traverse_section_graph(section_graph_id, keywords)
+#                 context_parts.append(context)
+
+#                 graphs_used.append({
+#                     "section_graph_id": section_graph_id,
+#                     "document_id": metadata.get("document_id", ""),
+#                     "section_id": metadata.get("section_id", ""),
+#                     "title": metadata.get("title", ""),
+#                     "score": score
+#                 })
+
+#                 logger.debug("Context retrieved for section {}", section_graph_id)
+
+#             except Exception as e:
+#                 logger.error("Failed to process hit {}: {}", section_graph_id, str(e))
+#                 continue
+
+#         if not context_parts:
+#             logger.warning("No context could be retrieved from sections")
+#             return {
+#                 "answer": "Failed to retrieve context from relevant sections.",
+#                 "graphs_used": graphs_used,
+#                 "confidence": 0.0
+#             }
+
+#         # Step 5: Merge contexts
+#         merged_context = "\n---\n".join(context_parts)
+#         logger.info("Merged context from {} sections, total length: {}", 
+#                    len(context_parts), len(merged_context))
+        
+#         logger.info("Context being sent to LLM: {}", merged_context[:800])
+
+#         # Step 6: Call LLM
+#         logger.info("Calling LLM with merged context")
+#         answer = await _call_llm(merged_context, request.question)
+
+#         # Step 7: Calculate confidence (simple heuristic based on score)
+#         avg_confidence = sum(g["score"] for g in graphs_used) / len(graphs_used) if graphs_used else 0.0
+#         logger.info("Query completed, confidence: {}", avg_confidence)
+
+#         return {
+#             "answer": answer,
+#             "graphs_used": graphs_used,
+#             "confidence": avg_confidence
+#         }
+
+#     except Exception as e:
+#         logger.error("Query failed: {}", str(e))
+#         raise HTTPException(
+#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#             detail=f"Query failed: {str(e)}"
+#         )
+
 @app.post("/query")
 async def query_documents(request: QueryRequest):
-    """
-    Query the GC-RAG system with per-section retrieval.
-    
-    Pipeline:
-    1. Embed query
-    2. Search top_k sections in Qdrant
-    3. Traverse each section graph for context
-    4. Merge contexts
-    5. Call LLM with merged context
-    
-    Returns: {answer, graphs_used, confidence}
-    """
     logger.info("Query request: question='{}', top_k={}", request.question, request.top_k)
 
     try:
-        # Step 1: Embed query
-        logger.info("Embedding query")
-        query_embedding = embed_query(request.question)
-        logger.debug("Query embedded, dimension: {}", len(query_embedding))
+        # Step 1: Use orchestrator for smart routing only
+        from orchestrator import route_query, QueryState
+        state: QueryState = {
+            "question": request.question,
+            "query_type": "simple",
+            "top_k": request.top_k,
+            "context": "", "answer": "",
+            "graphs_used": [], "confidence": 0.0,
+            "needs_clarification": False,
+            "clarification_message": ""
+        }
+        state = await route_query(state)
 
-        # Step 2: Search in Qdrant
-        logger.info("Searching Qdrant for top {} sections", request.top_k)
-        hits = await search(query_embedding, top_k=request.top_k)
-        logger.info("Found {} hits", len(hits))
-
-        if not hits:
-            logger.warning("No relevant sections found")
+        # Step 2: Handle unclear queries immediately
+        if state["query_type"] == "unclear":
             return {
-                "answer": "No relevant information found in the knowledge base.",
+                "answer": "Your question is unclear. Could you specify which service or scheme you're asking about?",
+                "query_type": "unclear",
                 "graphs_used": [],
                 "confidence": 0.0
             }
 
-        # Step 3: Extract keywords for graph traversal
-        keywords = _extract_keywords(request.question)
-        logger.debug("Extracted keywords: {}", keywords)
+        # Step 3: Use smart top_k from orchestrator
+        smart_top_k = state["top_k"]
+        logger.info("Query type: {}, using top_k: {}", state["query_type"], smart_top_k)
 
-        # Step 4: Traverse each section graph and collect context
+        # Step 4: Original proven pipeline (unchanged)
+        query_embedding = embed_query(request.question)
+        hits = await search(query_embedding, top_k=smart_top_k)
+
+        if not hits:
+            return {"answer": "No relevant information found.", "graphs_used": [], "confidence": 0.0}
+
+        keywords = _extract_keywords(request.question)
         context_parts = []
         graphs_used = []
 
@@ -280,14 +386,8 @@ async def query_documents(request: QueryRequest):
                 section_graph_id = hit.get("graph_id") or hit.get("metadata", {}).get("section_graph_id")
                 metadata = hit.get("metadata", {})
                 score = hit.get("score", 0.0)
-
-                logger.debug("Processing hit {}/{}: section_graph_id={}, score={}", 
-                            idx + 1, len(hits), section_graph_id, score)
-
-                # Traverse the section graph for context
                 context = await traverse_section_graph(section_graph_id, keywords)
                 context_parts.append(context)
-
                 graphs_used.append({
                     "section_graph_id": section_graph_id,
                     "document_id": metadata.get("document_id", ""),
@@ -295,48 +395,24 @@ async def query_documents(request: QueryRequest):
                     "title": metadata.get("title", ""),
                     "score": score
                 })
-
-                logger.debug("Context retrieved for section {}", section_graph_id)
-
             except Exception as e:
-                logger.error("Failed to process hit {}: {}", section_graph_id, str(e))
+                logger.error("Failed to process hit {}: {}", section_graph_id, e)
                 continue
 
-        if not context_parts:
-            logger.warning("No context could be retrieved from sections")
-            return {
-                "answer": "Failed to retrieve context from relevant sections.",
-                "graphs_used": graphs_used,
-                "confidence": 0.0
-            }
-
-        # Step 5: Merge contexts
         merged_context = "\n---\n".join(context_parts)
-        logger.info("Merged context from {} sections, total length: {}", 
-                   len(context_parts), len(merged_context))
-        
-        logger.info("Context being sent to LLM: {}", merged_context[:800])
-
-        # Step 6: Call LLM
-        logger.info("Calling LLM with merged context")
         answer = await _call_llm(merged_context, request.question)
-
-        # Step 7: Calculate confidence (simple heuristic based on score)
         avg_confidence = sum(g["score"] for g in graphs_used) / len(graphs_used) if graphs_used else 0.0
-        logger.info("Query completed, confidence: {}", avg_confidence)
 
         return {
             "answer": answer,
+            "query_type": state["query_type"],
             "graphs_used": graphs_used,
             "confidence": avg_confidence
         }
 
     except Exception as e:
         logger.error("Query failed: {}", str(e))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Query failed: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Query failed: {str(e)}")
 
 
 @app.get("/graphs")

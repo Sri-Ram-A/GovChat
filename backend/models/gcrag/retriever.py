@@ -7,7 +7,7 @@ import httpx
 from loguru import logger
 
 from embedder import load_model
-from graph_store import get_graph, traverse_graph
+from graph_store import get_section_graph, traverse_section_graph
 from vector_store import search as qdrant_search
 
 
@@ -123,10 +123,8 @@ async def _call_llm(prompt: str) -> str:
 
 async def _build_context(graph_id: str, keywords: List[str]) -> str:
     logger.info("Fetching and traversing graph {}", graph_id)
-    graph_data = await get_graph(graph_id)
-    traversal = await traverse_graph(graph_id, keywords)
-    header = f"Graph ID: {graph_id}\n"
-    return header + traversal
+    traversal = await traverse_section_graph(graph_id, keywords)
+    return traversal
 
 
 async def _retrieve_answer_async(question: str, top_k: int = 3) -> Dict[str, Any]:
