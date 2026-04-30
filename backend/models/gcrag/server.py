@@ -25,7 +25,7 @@ from graph_store import (
     delete_section_graph,
 )
 from embedder import embed_section, embed_query
-from vector_store import upsert_embedding, delete_embedding, search
+from vector_store import upsert_embedding, delete_embedding, search, list_all
 
 
 class QueryRequest(BaseModel):
@@ -450,6 +450,43 @@ async def document_status(document_id: str):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Status lookup failed: {str(e)}"
         )
+    
+
+@app.get("/documents")
+async def list_documents():
+    """List all documents with metadata."""
+    try:
+        sections = await list_all_section_graphs()
+        
+        # group by document_id
+        documents = {}
+        for section in sections:
+            doc_id = section.get("document_id")
+            if doc_id not in documents:
+                documents[doc_id] = {
+                    "document_id": doc_id,
+                    "section_count": 0,
+                    "sections": []
+                }
+            documents[doc_id]["section_count"] += 1
+            documents[doc_id]["sections"].append(section.get("section_id"))
+        
+        # enrich with Qdrant metadata (filename, title)
+        embeddings = await list_all()
+        for emb in embeddings:
+            doc_id = emb["metadata"].get("document_id")
+            if doc_id in documents:
+                documents[doc_id]["filename"] = emb["metadata"].get("filename", "")
+                documents[doc_id]["title"] = emb["metadata"].get("title", "")
+
+        return {
+            "status": "success",
+            "documents": list(documents.values()),
+            "total": len(documents)
+        }
+    except Exception as e:
+        logger.error("List documents failed: {}", e)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":

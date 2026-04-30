@@ -172,3 +172,5 @@ SWAGGER_SETTINGS = {
 SPECTACULAR_SETTINGS = {
     'COMPONENT_SPLIT_REQUEST': True # To allow FileField in swagger UI
 }
+
+GCRAG_URL = "http://localhost:8001"

@@ -13,7 +13,7 @@ import serializer.base as base_serializer
 
 
 class CitizenListAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     serializer_class = citizens_serializer.CitizenProfileSerializer
     def get(self, request):
         citizens = CitizenProfile.objects.select_related('user').all()

@@ -4,7 +4,7 @@ from channels.generic.websocket import WebsocketConsumer
 
 from .stt_client import STTClient
 from .tts_client import TTSClient
-from .ttt_client import TTTClient
+from .gcrag_client import GCRAGClient
 from django.conf import settings
 
 STT_URL = settings.STT_URL
@@ -18,7 +18,7 @@ class ChatConsumer(WebsocketConsumer):
         self.stt = STTClient(url=STT_URL,on_result=self.on_stt_result)
         # Text-to-Speech client
         self.tts = TTSClient(url=TTS_URL,on_audio=self.on_tts_audio)
-        self.ttt = TTTClient(url=TTT_URL)
+        self.ttt = GCRAGClient()
 
     def receive(self, text_data=None, bytes_data=None):
         if bytes_data:

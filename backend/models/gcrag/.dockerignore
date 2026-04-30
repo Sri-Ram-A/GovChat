@@ -1,0 +1,12 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+hf_cache/
+*.pdf
+test_*.py
+verify.py
+*.npy
+*.json
+processed_data/
