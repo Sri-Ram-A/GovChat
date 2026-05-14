@@ -23,20 +23,11 @@ const navItems: NavItem[] = [
       { label: "View Map", href: "/map" },
       { label: "View Complaints", href: "/admin/complaints" },
       { label: "View Clusters", href: "/admin/groups" },
-      { label: "About", href: "/about" },
       { label: "Home", href: "/admin/home" },
     ],
   },
-  {
-    label: "Resources",
-    items: [
-      { label: "Guidelines", href: "/resources/guidelines" },
-      { label: "FAQs", href: "/resources/faq" },
-      { label: "Contact Us", href: "/resources/contact" },
-      { label: "Announcements", href: "/resources/announcements" },
-    ],
-  },
-  { label: "About Us", href: "/about-us" },
+
+  { label: "About Us", href: "/admin/about" },
 ];
 
 export default function GovernmentNavbar() {
@@ -150,18 +141,8 @@ export default function GovernmentNavbar() {
                     My Profile
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/citizen/complaints" className="flex items-center gap-2 cursor-pointer">
-                    <FileText className="h-4 w-4" />
-                    My Complaints
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/citizen/notifications" className="flex items-center gap-2 cursor-pointer">
-                    <Bell className="h-4 w-4" />
-                    Notifications
-                  </Link>
-                </DropdownMenuItem>
+
+
                 <div className="my-2 border-t border-border" />
                 <DropdownMenuItem className="text-destructive cursor-pointer flex items-center gap-2">
                   <LogOut className="h-4 w-4" />

@@ -8,6 +8,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 import serializer.complaints as complaints_serializer
 from entities.complaints import Complaint
 from citizens import helper
+from django.shortcuts import get_object_or_404
 import entities.complaints as complaints_entity
 
 
@@ -16,6 +17,12 @@ class AllComplaintsView(APIView):
 
     def get(self, request):
         complaints = Complaint.objects.all()
+        if request.user.is_authenticated:
+            try:
+                # Exclude complaints filed by the current citizen
+                complaints = complaints.exclude(citizen__user=request.user)
+            except:
+                pass
         serializer = self.serializer_class(complaints, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
@@ -192,6 +199,18 @@ class MyComplaintsView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        my_complaints = Complaint.objects.filter(citizen=citizen_profile)
+        my_complaints = Complaint.objects.filter(citizen__user=request.user)
         serializer = self.serializer_class(my_complaints, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+class UpvoteComplaintView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, complaint_id):
+        complaint = get_object_or_404(Complaint, id=complaint_id)
+        complaint.likes_count += 1
+        complaint.save(update_fields=['likes_count'])
+        return Response({
+            "id": complaint.id,
+            "likes_count": complaint.likes_count,
+            "message": "Upvoted successfully"
+        }, status=status.HTTP_200_OK)

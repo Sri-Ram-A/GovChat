@@ -6,6 +6,7 @@ urlpatterns = [
     path('register/', create.CitizenRegistrationAPIView.as_view(), name='citizen-register'),
     path('login/', create.CitizenLoginAPIView.as_view(), name='citizen-login'),
     path('complete-onboarding/', create.CompleteOnboardingAPIView.as_view(), name='complete-onboarding'),
+    path('me/', create.MeAPIView.as_view(), name='citizen-me'),
 
     path("ai/caption_image/", complaints.ImageCaptionAPIView.as_view()),
     path("ai/resolve_location/", complaints.ResolveLocationAPIView.as_view()),
@@ -16,6 +17,5 @@ urlpatterns = [
 
 
     path("complaints/all/", complaints.AllComplaintsView.as_view()),
-
-
+    path("complaints/upvote/<int:complaint_id>/", complaints.UpvoteComplaintView.as_view()),
 ]

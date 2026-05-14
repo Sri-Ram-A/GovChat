@@ -52,7 +52,7 @@ export default function CitizenLayout({
                     </div>
 
                     {/* Text content */}
-                    <div className="space-y-3 animate-fade-in" style={{ animation: 'fadeIn 0.8s ease-in-out 0.3s both' }}>
+                    <div className="space-y-3 animate-fade-in" style={{ animationDelay: '0.3s' }}>
                         <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-foreground">
                             Preparing Services
                         </h1>
@@ -64,43 +64,13 @@ export default function CitizenLayout({
                     {/* Progress indicator */}
                     <div className="space-y-2 pt-4">
                         <div className="h-1 w-full bg-border rounded-full overflow-hidden">
-                            <div
-                                className="h-full bg-linear-to-r from-primary to-primary/60 rounded-full"
-                                style={{
-                                    animation: 'progress 2s ease-in-out infinite',
-                                }}
-                            ></div>
+                            <div className="h-full bg-linear-to-r from-primary to-primary/60 rounded-full animate-progress" />
                         </div>
                         <p className="text-xs text-muted-foreground">
                             Just a moment…
                         </p>
                     </div>
                 </div>
-
-                <style jsx>{`
-                    @keyframes fadeIn {
-                        from {
-                            opacity: 0;
-                            transform: translateY(10px);
-                        }
-                        to {
-                            opacity: 1;
-                            transform: translateY(0);
-                        }
-                    }
-
-                    @keyframes progress {
-                        0% {
-                            width: 0%;
-                        }
-                        50% {
-                            width: 100%;
-                        }
-                        100% {
-                            width: 0%;
-                        }
-                    }
-                `}</style>
             </div>
         )
     }

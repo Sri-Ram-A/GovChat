@@ -16,16 +16,13 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
-import CitizenNavbar from "@/components/navbar/CitizenNavbar"
 
-export default function AboutPage() {
+export default function AdminAboutPage() {
   const router = useRouter()
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <CitizenNavbar />
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 pt-40 pb-20 space-y-32">
+      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-20 space-y-32">
         
         {/* Hero Section */}
         <section className="text-center space-y-8 max-w-4xl mx-auto">
@@ -44,22 +41,22 @@ export default function AboutPage() {
           <div className="flex flex-wrap justify-center gap-4 pt-4">
             <Button 
               className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-8 h-12 shadow-lg shadow-blue-600/20"
-              onClick={function() { router.push("/citizen/home"); }}
+              onClick={function() { router.push("/admin/home"); }}
             >
-              Get Started Now
+              Go to Dashboard
             </Button>
             <Button 
               variant="outline" 
               className="rounded-full px-8 h-12 border-slate-200"
-              onClick={function() { router.push("/contact"); }}
+              onClick={function() { router.push("/resources/contact"); }}
             >
-              Speak with Us
+              Contact Support
             </Button>
           </div>
         </section>
 
         {/* Vision & Values */}
-        <section className="grid lg:grid-cols-2 gap-20 items-center">
+        <section id="vision" className="grid lg:grid-cols-2 gap-20 items-center">
           <div className="relative rounded-3xl overflow-hidden shadow-2xl aspect-square lg:aspect-video">
             <Image
               src="/herocontainer/1.png"
@@ -103,7 +100,7 @@ export default function AboutPage() {
         </section>
 
         {/* Feature Highlights */}
-        <section className="space-y-16">
+        <section id="how-it-works" className="space-y-16">
           <div className="text-center space-y-4">
             <h2 className="text-4xl font-bold tracking-tight">How it Works</h2>
             <p className="text-slate-500 max-w-xl mx-auto">
@@ -131,7 +128,7 @@ export default function AboutPage() {
         </section>
 
         {/* Impact Section */}
-        <section className="bg-slate-900 rounded-[3rem] p-12 md:p-20 text-white relative overflow-hidden">
+        <section id="impact" className="bg-slate-900 rounded-[3rem] p-12 md:p-20 text-white relative overflow-hidden">
           <div className="relative z-10 grid lg:grid-cols-2 gap-16 items-center">
             <div className="space-y-8">
               <h2 className="text-4xl md:text-5xl font-bold tracking-tight">Making a Tangible Impact on Urban Life.</h2>
@@ -141,12 +138,6 @@ export default function AboutPage() {
                 <ImpactLink text="Enhanced accountability of public service officers" />
                 <ImpactLink text="Direct line of communication with local leaders" />
               </ul>
-              <Button 
-                className="bg-white text-slate-900 hover:bg-slate-100 rounded-full px-8 h-12 font-bold"
-                onClick={function() { router.push("/citizen/post"); }}
-              >
-                Submit Your First Report
-              </Button>
             </div>
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-6">
@@ -162,22 +153,6 @@ export default function AboutPage() {
           {/* Decorative background element */}
           <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/20 blur-[120px] rounded-full" />
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-600/10 blur-[100px] rounded-full" />
-        </section>
-
-        {/* CTA Section */}
-        <section className="text-center space-y-8 py-10">
-          <h2 className="text-3xl font-bold tracking-tight">Ready to build a better city together?</h2>
-          <p className="text-slate-500 max-w-lg mx-auto">
-            Join thousands of citizens who are already making a difference in their neighborhoods every single day.
-          </p>
-          <div className="flex justify-center gap-4">
-            <Button 
-              className="bg-slate-900 hover:bg-slate-800 text-white rounded-full px-10 h-14 font-bold"
-              onClick={function() { router.push("/citizen/signup"); }}
-            >
-              Sign Up for GovChat
-            </Button>
-          </div>
         </section>
 
       </main>

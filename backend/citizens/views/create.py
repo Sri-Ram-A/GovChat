@@ -51,3 +51,14 @@ class CompleteOnboardingAPIView(APIView):
         user.needs_onboarding = False
         user.save()
         return Response({"message": "Onboarding completed"}, status=status.HTTP_200_OK)
+
+class MeAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = citizens_serializer.CitizenProfileSerializer
+    def get(self, request):
+        try:
+            citizen = CitizenProfile.objects.select_related('user').get(user=request.user)
+            serializer = self.serializer_class(citizen)
+            return Response(serializer.data)
+        except CitizenProfile.DoesNotExist:
+            return Response({"error": "Profile not found"}, status=status.HTTP_404_NOT_FOUND)
