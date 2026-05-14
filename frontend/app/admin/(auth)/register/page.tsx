@@ -151,7 +151,7 @@ export default function RegisterPage() {
           </h1>
           <p className="text-sm text-neutral-500 dark:text-neutral-400">
             Already have an account?{" "}
-            <Link href="/admin/login" className="underline underline-offset-4 hover:text-neutral-900 dark:hover:text-neutral-50">
+            <Link href="/admin/login" className="underline underline-offset-4 hover:text-primary dark:hover:text-primary/80">
               Sign in
             </Link>
           </p>
@@ -215,7 +215,7 @@ export default function RegisterPage() {
                   <Button
                     type="button"
                     onClick={handleNextStep}
-                    className="w-full bg-neutral-900 hover:bg-neutral-800 text-white dark:bg-neutral-50 dark:hover:bg-neutral-200 dark:text-neutral-900 h-10 mt-2 transition-colors cursor-pointer flex items-center justify-center gap-2"
+                    className="w-full bg-primary hover:bg-primary/90 text-white dark:bg-primary/90 dark:hover:bg-primary/80 h-10 mt-2 transition-colors cursor-pointer flex items-center justify-center gap-2"
                   >
                     Continue
                     <ArrowRight className="h-4 w-4" />
@@ -337,7 +337,7 @@ export default function RegisterPage() {
 
                     <Button
                       type="submit"
-                      className="flex-1 bg-neutral-900 hover:bg-neutral-800 text-white dark:bg-neutral-50 dark:hover:bg-neutral-200 dark:text-neutral-900 h-10 font-medium transition-colors cursor-pointer flex items-center justify-center"
+                      className="flex-1 bg-primary hover:bg-primary/90 text-white dark:bg-primary/90 dark:hover:bg-primary/80 h-10 font-medium transition-colors cursor-pointer flex items-center justify-center"
                       disabled={loading}
                     >
                       {loading ? (

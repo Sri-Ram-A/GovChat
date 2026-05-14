@@ -42,7 +42,7 @@ function GroupStatusBadge({ status }: { status: GroupStatus }) {
 
 function resolveMediaUrl(path?: string | null) {
   if (!path) return null;
-  return path.startsWith("http") ? path : `${API_URL}${path.replace(/^\/+/, "")}`;
+  return path.startsWith("http") ? path : `${API_URL}/${path.replace(/^\/+/, "")}`;
 }
 
 function GroupTimeline({ timeline = [] }: { timeline: any[] }) {

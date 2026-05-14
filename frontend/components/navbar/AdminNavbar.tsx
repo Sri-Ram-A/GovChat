@@ -16,7 +16,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: "Home", href: "/" },
+  { label: "Home", href: "/main" },
   {
     label: "Services",
     items: [
@@ -49,7 +49,7 @@ export default function GovernmentNavbar() {
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div className="flex items-center justify-between">
           {/* Logo Section */}
-          <Link href="/" className="flex items-center gap-3 group">
+          <Link href="/main" className="flex items-center gap-3 group">
             <div className="p-2.5 rounded-lg bg-primary/90 text-primary-foreground group-hover:bg-primary transition-colors shadow-lg">
               <Shield className="h-6 w-6" />
             </div>

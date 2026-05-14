@@ -36,7 +36,6 @@ export default function CitizenPostPage() {
   }, [])
 
   // ==================== DATA FETCHING ====================
-
   const fetchDepartments = async () => {
     try {
       const res = await REQUEST("GET", "admins/departments/")
@@ -47,7 +46,6 @@ export default function CitizenPostPage() {
   }
 
   // ==================== FORM HANDLERS ====================
-
   const updateForm = (updates: Partial<ComplaintCreatePayload>) => {
     setForm(prev => ({ ...prev, ...updates }))
   }
@@ -64,7 +62,6 @@ export default function CitizenPostPage() {
   }
 
   // ==================== GEOLOCATION ====================
-
   const getCurrentCoordinates = (): Promise<{ lat: number; lng: number }> => {
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
@@ -85,17 +82,14 @@ export default function CitizenPostPage() {
     setLoading(true)
     try {
       const { lat, lng } = await getCurrentCoordinates()
-
       const location = await REQUEST("POST", "citizens/ai/resolve_location/", {
         latitude: lat,
         longitude: lng,
       })
-
       const updates: Partial<ComplaintCreatePayload> = {
         latitude: lat,
         longitude: lng,
       }
-
       UPDATABLE_LOCATION_FIELDS.forEach(key => {
         if (location[key]) {
           updates[key] = location[key]
@@ -112,13 +106,11 @@ export default function CitizenPostPage() {
   }
 
   // ==================== AI DESCRIPTION ====================
-
   const handleRefineDescription = async () => {
     if (!file) {
       toast.warning("Please upload an image first")
       return
     }
-
     setLoading(true)
     try {
       const fd = new FormData()
@@ -127,7 +119,6 @@ export default function CitizenPostPage() {
       const ai = await REQUEST("POST", "citizens/ai/caption_image/", fd, {
         isMultipart: true,
       })
-
       updateForm({
         description: ai.caption,
         department: ai.suggested_department.id,
@@ -141,19 +132,16 @@ export default function CitizenPostPage() {
   }
 
   // ==================== SUBMISSION ====================
-
   const getMediaType = (file: File): string => {
     if (file.type.startsWith("image")) return "image"
     if (file.type.startsWith("video")) return "video"
     if (file.type.startsWith("audio")) return "audio"
     return "document"
   }
-
   const ensureCoordinates = async (): Promise<{ latitude: number; longitude: number }> => {
     if (form.latitude && form.longitude) {
       return { latitude: form.latitude, longitude: form.longitude }
     }
-
     const coords = await getCurrentCoordinates()
     return { latitude: coords.lat, longitude: coords.lng }
   }
@@ -204,7 +192,6 @@ export default function CitizenPostPage() {
   }
 
   // ==================== RENDER ====================
-
   const isImageFile = file?.type.startsWith("image")
 
   return (

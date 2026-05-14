@@ -8,9 +8,9 @@ from django.shortcuts import get_object_or_404
 from entities.handlers import HandlerProfile 
 import serializer.base as base_serializer
 import  serializer.handlers as handler_serializer
-from entities.governance import Department
 from entities.complaints import ComplaintGroup
 from serializer.complaints import ParticularComplaintGroupSerializer
+
 class HandlerListAPIView(APIView):
     serializer_class = handler_serializer.HandlerProfileSerializer
     
