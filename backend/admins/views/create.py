@@ -91,4 +91,8 @@ class AdminLoginAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data
         refresh = RefreshToken.for_user(user) # type: ignore
-        return Response({"access": str(refresh.access_token),"refresh": str(refresh),}, status=status.HTTP_200_OK)
+        return Response({
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+            "needs_onboarding": user.needs_onboarding
+        }, status=status.HTTP_200_OK)

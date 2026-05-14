@@ -75,7 +75,13 @@ export default function GovernmentNavbar() {
                     {item.label}
                   </Link>
                 ) : (
-                  <button className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-3 rounded-md hover:bg-primary/5 flex items-center gap-1">
+                  <button 
+                    id={
+                      item.label === "Services" ? "tour-services" : 
+                      item.label === "Resources" ? "tour-resources" : undefined
+                    }
+                    className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-3 rounded-md hover:bg-primary/5 flex items-center gap-1"
+                  >
                     {item.label}
                     <ChevronDown className="h-4 w-4" />
                   </button>
@@ -88,6 +94,16 @@ export default function GovernmentNavbar() {
                       <Link
                         key={subitem.href}
                         href={subitem.href}
+                        id={
+                          subitem.label === "File Complaint" ? "tour-file-complaint" :
+                          subitem.label === "View My Complaints" ? "tour-my-complaints" :
+                          subitem.label === "View Map" ? "tour-view-map" :
+                          subitem.label === "Need Help?" ? "tour-need-help" : 
+                          subitem.label === "Guidelines" ? "tour-guidelines" :
+                          subitem.label === "FAQs" ? "tour-faqs" :
+                          subitem.label === "Contact Us" ? "tour-contact-us" :
+                          subitem.label === "Announcements" ? "tour-announcements" : undefined
+                        }
                         className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:text-primary hover:bg-primary/5 transition-colors"
                       >
                         {subitem.icon}

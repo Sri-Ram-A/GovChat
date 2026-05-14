@@ -7,9 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import FormField from "@/components/reusables/forms/FormField";
 import { toast } from "sonner";
-import { REQUEST } from "@/services/api";
-import { setStoredToken } from "@/services/auth";
+import { REQUEST, setTokens, setOnboardingNeeded } from "@/services/api";
 import { Loader2, Lock, User } from "lucide-react";
+
+interface LoginResponse {
+  access: string;
+  refresh: string;
+  needs_onboarding: boolean;
+}
 
 export default function LoginPage() {
   const [isVisible, setIsVisible] = useState(false)
@@ -32,11 +37,12 @@ export default function LoginPage() {
 
     try {
       // adjust route if your backend expects another path
-      const res = await REQUEST("POST", "handlers/login/", { username: form.username, password: form.password });
+      const res = await REQUEST<LoginResponse>("POST", "handlers/login/", { username: form.username, password: form.password });
       // Expect token in res.access or res.token — adjust accordingly
       if (res?.access) {
-        // Store the access token 
-        setStoredToken(res.access);        
+        // Store tokens and onboarding status
+        setTokens(res.access, res.refresh);
+        setOnboardingNeeded(res.needs_onboarding);
         toast.success("Welcome back!");
         setIsExiting(true)
         setTimeout(() => {

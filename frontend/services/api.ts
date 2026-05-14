@@ -34,6 +34,15 @@ export function setTokens(access: string, refresh?: string): void {
 export function clearTokens(): void {
   localStorage.removeItem("access");
   localStorage.removeItem("refresh");
+  localStorage.removeItem("needs_onboarding");
+}
+
+export function setOnboardingNeeded(needed: boolean): void {
+  localStorage.setItem("needs_onboarding", needed ? "true" : "false");
+}
+
+export function getOnboardingNeeded(): boolean {
+  return localStorage.getItem("needs_onboarding") === "true";
 }
 
 // ── Error normaliser ─────────────────────────────────────────────────────────

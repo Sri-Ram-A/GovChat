@@ -2,13 +2,18 @@
 
 import { useEffect, useState } from "react"
 import Image from "next/image"
+import { HelpCircle } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { getStoredToken, clearStoredToken } from "@/services/auth"
+import { getOnboardingNeeded } from "@/services/api"
 import { useRouter } from "next/navigation"
+import { SpotlightTour } from "@/components/reusables/OnboardingTutorial"
 
 
 export default function CitizenHome() {
   const router = useRouter()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(false)
 
   useEffect(() => {
     checkAuth()
@@ -22,6 +27,7 @@ export default function CitizenHome() {
         return
       }
       setIsAuthenticated(true)
+      setShowOnboarding(getOnboardingNeeded())
     } catch (error) {
       console.error("Auth check failed:", error)
       clearStoredToken()
@@ -35,9 +41,12 @@ export default function CitizenHome() {
 
   return (
     <div className="min-h-screen bg-linear-to-b from-background to-muted/30">
+      {showOnboarding && (
+        <SpotlightTour onComplete={() => setShowOnboarding(false)} />
+      )}
       {/* Welcome Screen */}
       <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        <section >
+        <section id="tour-hero">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-6">
               <div className="space-y-4">
@@ -118,6 +127,16 @@ export default function CitizenHome() {
         </section>
       </main>
 
+      {/* Re-run Tour Button */}
+      <div className="fixed bottom-6 right-6 z-40">
+        <Button
+          onClick={() => setShowOnboarding(true)}
+          className="rounded-full h-14 w-14 shadow-2xl bg-orange-600 hover:bg-orange-500 text-white transition-all hover:scale-110 active:scale-95 group"
+          title="Re-run Onboarding Tour"
+        >
+          <HelpCircle className="h-6 w-6 transition-transform group-hover:rotate-12" />
+        </Button>
+      </div>
     </div>
   )
 }
