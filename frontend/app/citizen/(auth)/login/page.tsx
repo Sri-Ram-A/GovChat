@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
 import { Loader2, Lock, User } from "lucide-react";
-import { REQUEST, setTokens } from "@/services/api";
+import { REQUEST, setTokens, setOnboardingNeeded } from "@/services/api";
 import { FieldWrapper } from "@/app/citizen/(auth)/register/page"; // reuse the wrapper
 
 interface LoginForm {
@@ -34,6 +34,7 @@ interface LoginForm {
 interface LoginResponse {
   access: string;
   refresh: string;
+  needs_onboarding: boolean;
 }
 
 export default function LoginPage() {
@@ -85,6 +86,7 @@ export default function LoginPage() {
 
       // WHY store both: refresh token is needed for the silent renewal in api.ts
       setTokens(res.access, res.refresh);
+      setOnboardingNeeded(res.needs_onboarding);
       toast.success("Welcome back!");
       navigateWithFade("/citizen/home");
     } catch (err: unknown) {
