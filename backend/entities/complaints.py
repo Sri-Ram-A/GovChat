@@ -88,6 +88,7 @@ class Complaint(models.Model):
 
 
 class Evidence(models.Model):
+    id = models.BigAutoField(primary_key=True)
     MEDIA_TYPE_CHOICES = [
         ("image", "Image"),
         ("video", "Video"),
@@ -121,7 +122,11 @@ class GroupTimeline(models.Model):
         ComplaintGroup, on_delete=models.CASCADE, related_name="timeline"
     )
     admin = models.ForeignKey(
-        AdminProfile, on_delete=models.CASCADE, related_name="timeline"
+        AdminProfile,
+        on_delete=models.CASCADE,
+        related_name="timeline",
+        null=True, 
+        blank=True,
     )
 
     title = models.CharField(max_length=255, null=True, blank=True)

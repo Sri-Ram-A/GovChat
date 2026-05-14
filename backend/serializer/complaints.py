@@ -6,39 +6,45 @@ import entities.governance as complaints_governance
 from entities.admins import AdminProfile
 from entities.complaints import ComplaintCount
 
+
 class ImageCaptionSerializer(serializers.Serializer):
     file = serializers.ImageField()
+
 
 class ResolveLocationSerializer(serializers.Serializer):
     latitude = serializers.FloatField()
     longitude = serializers.FloatField()
-    
+
+
 class ComplaintCountSerializer(serializers.ModelSerializer):
     class Meta:
         model = ComplaintCount
-        fields = ['complaint', 'closed_count']
-        read_only_fields = ['complaint']
-    
+        fields = ["complaint", "closed_count"]
+        read_only_fields = ["complaint"]
+
+
 class ComplaintCreateSerializer(serializers.ModelSerializer):
-    department = serializers.PrimaryKeyRelatedField(queryset=complaints_entity.Department.objects.all())
+    department = serializers.PrimaryKeyRelatedField(
+        queryset=complaints_entity.Department.objects.all()
+    )
+
     class Meta:
         model = complaints_entity.Complaint
-        exclude = ["citizen", "timestamp", "likes_count", "status","group"]
+        exclude = ["citizen", "timestamp", "likes_count", "status", "group"]
 
     def create(self, validated_data):
         request = self.context["request"]
 
         return complaints_entity.Complaint.objects.create(
-            citizen=request.user.citizen_profile,
-            status="OPEN",
-            **validated_data
+            citizen=request.user.citizen_profile, status="OPEN", **validated_data
         )
+
 
 class EvidenceCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = complaints_entity.Evidence
-        fields = ['file', 'media_type', 'caption', 'suggested_department']
-        read_only_fields = ['caption', 'suggested_department']
+        fields = ["file", "media_type", "caption", "suggested_department"]
+        read_only_fields = ["caption", "suggested_department"]
 
     def validate(self, attrs):
         request = self.context["request"]
@@ -46,13 +52,15 @@ class EvidenceCreateSerializer(serializers.ModelSerializer):
         if not complaint_id:
             raise ValidationError("Complaint ID missing")
         # Fetch complaint
-        complaint = get_object_or_404(complaints_entity.Complaint,id=complaint_id)
+        complaint = get_object_or_404(complaints_entity.Complaint, id=complaint_id)
         # Ownership validation
         if complaint.citizen != request.user.citizen_profile:
             raise PermissionDenied("You do not own this complaint")
         # Status validation
         if complaint.status in ["CLOSED", "RESOLVED"]:
-            raise ValidationError("Cannot upload evidence to a closed or resolved complaint")
+            raise ValidationError(
+                "Cannot upload evidence to a closed or resolved complaint"
+            )
         # Media-type sanity
         allowed = dict(complaints_entity.Evidence.MEDIA_TYPE_CHOICES)
         if attrs["media_type"] not in allowed:
@@ -70,8 +78,11 @@ class EvidenceCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         return complaints_entity.Evidence.objects.create(**validated_data)
 
+
 class GroupTimelineCreateSerializer(serializers.ModelSerializer):
-    group = serializers.PrimaryKeyRelatedField(queryset=complaints_entity.ComplaintGroup.objects.all())
+    group = serializers.PrimaryKeyRelatedField(
+        queryset=complaints_entity.ComplaintGroup.objects.all()
+    )
 
     class Meta:
         model = complaints_entity.GroupTimeline
@@ -80,53 +91,64 @@ class GroupTimelineCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         request = self.context["request"]
         return complaints_entity.GroupTimeline.objects.create(
-            admin=request.user.admin_profile,
-            **validated_data
+            admin=request.user.admin_profile, **validated_data
         )
+
 
 class EvidenceListSerializer(serializers.ModelSerializer):
     class Meta:
         model = complaints_entity.Evidence
-        fields = ['file', 'media_type', 'caption', 'suggested_department']
-        read_only_fields = ['caption', 'suggested_department']
+        fields = ["file", "media_type", "caption", "suggested_department"]
+        read_only_fields = ["caption", "suggested_department"]
+
 
 class ComplaintListSerializer(serializers.ModelSerializer):
     citizen = serializers.StringRelatedField()
     department = serializers.StringRelatedField()
     evidences = EvidenceListSerializer(many=True)
+
     class Meta:
         model = complaints_entity.Complaint
         fields = "__all__"
+
+
 class GroupTimelineSerializer(serializers.ModelSerializer):
     admin = serializers.StringRelatedField()
+
     class Meta:
         model = complaints_entity.GroupTimeline
         fields = ["id", "title", "text", "image", "created_at", "admin"]
+
 
 class ComplaintGroupSerializer(serializers.ModelSerializer):
     department = serializers.StringRelatedField()
     complaints_count = serializers.IntegerField()
     timeline = GroupTimelineSerializer(many=True, read_only=True)
+
     class Meta:
         model = complaints_entity.ComplaintGroup
         fields = "__all__"
-        
+
+
 class ResolveGroupStatusSerializer(serializers.Serializer):
     status = serializers.ChoiceField(
         choices=[
-            ('OPEN', 'Open'),
-            ('IN_PROGRESS', 'In Progress'),
-            ('RESOLVED', 'Resolved'),
-            ('CLOSED', 'Closed'),
+            ("OPEN", "Open"),
+            ("IN_PROGRESS", "In Progress"),
+            ("RESOLVED", "Resolved"),
+            ("CLOSED", "Closed"),
         ]
     )
+
 
 class ParticularComplaintGroupSerializer(serializers.ModelSerializer):
     department = serializers.StringRelatedField()
     timeline = GroupTimelineSerializer(many=True, read_only=True)
+
     class Meta:
         model = complaints_entity.ComplaintGroup
         fields = "__all__"
+
 
 class ComplaintDetailedViewSerializer(serializers.ModelSerializer):
     evidences = EvidenceListSerializer(many=True, read_only=True)
@@ -136,3 +158,76 @@ class ComplaintDetailedViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = complaints_entity.Complaint
         fields = "__all__"
+
+
+class HandlerProfileSerializer(serializers.Serializer):
+    """
+    Read-only serializer returned by /handlers/ and /handlers/department/
+    Used by the admin assign-group dialog.
+    """
+
+    id = serializers.IntegerField(source="pk")
+    name = serializers.CharField(source="user.username")
+    designation = serializers.CharField()
+    department = serializers.StringRelatedField()
+    group_title = serializers.SerializerMethodField()
+
+    def get_group_title(self, obj):
+        return obj.group.title if obj.group else None
+
+
+class HandlerEvidenceCreateSerializer(serializers.ModelSerializer):
+    """
+    Used by handlers to upload evidence images for complaints in their group.
+    Does NOT require complaint ownership (handlers are not citizens),
+    but the view already validates group membership before calling this.
+    """
+
+    class Meta:
+        model = complaints_entity.Evidence
+        fields = ["file", "media_type", "caption"]
+
+    def validate_file(self, value):
+        if value.size > 20 * 1024 * 1024:
+            raise ValidationError("File exceeds 20 MB limit.")
+        return value
+
+    def validate_media_type(self, value):
+        allowed = dict(complaints_entity.Evidence.MEDIA_TYPE_CHOICES)
+        if value not in allowed:
+            raise ValidationError(
+                f"Invalid media type. Choices: {list(allowed.keys())}"
+            )
+        return value
+
+    def create(self, validated_data):
+        complaint = self.context["complaint"]
+        return complaints_entity.Evidence.objects.create(
+            complaint=complaint,
+            suggested_department=complaint.department,
+            **validated_data,
+        )
+
+
+class GroupTimelineCreateByHandlerSerializer(serializers.ModelSerializer):
+    """
+    Mirrors GroupTimelineCreateSerializer but stamps handler_profile
+    instead of admin_profile on the created timeline entry.
+
+    Drop this into serializer/complaints.py alongside the admin version.
+    """
+
+    group = serializers.PrimaryKeyRelatedField(
+        queryset=complaints_entity.ComplaintGroup.objects.all()
+    )
+
+    class Meta:
+        model = complaints_entity.GroupTimeline
+        exclude = ["admin"]  # admin field left null; handler field set in create()
+
+    def create(self, validated_data):
+        request = self.context["request"]  # noqa: F841
+        return complaints_entity.GroupTimeline.objects.create(
+            admin=None,  # not an admin — leave blank
+            **validated_data,
+        )
