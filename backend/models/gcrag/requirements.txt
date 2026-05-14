@@ -13,3 +13,7 @@ httpx==0.28.1
 python-multipart==0.0.20
 transformers==4.38.0
 torch==2.1.0
+
+# Invoke-RestMethod -Method DELETE -Uri "http://localhost:6333/collections/gcrag_graphs"   
+# uvicorn server:app --port 8001
+# docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant:latest

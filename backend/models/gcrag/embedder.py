@@ -207,4 +207,3 @@ def embed_query(query: str) -> List[float]:
     
     logger.debug("Embedded query with embedding dimension {}", len(embedding))
     return embedding
-
