@@ -1,14 +1,11 @@
 import os
-os.environ["HF_HOME"] = os.getenv("HF_HOME", "D:/hf_cache")
-
 from dotenv import load_dotenv
-load_dotenv()
-
-import os
-import uuid
 from typing import Dict, List, Optional
 from neo4j import AsyncGraphDatabase
 from loguru import logger
+import uuid
+load_dotenv()
+
 
 
 class GraphStore:

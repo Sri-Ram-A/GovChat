@@ -1,7 +1,4 @@
 import os
-os.environ["HF_HOME"] = os.getenv("HF_HOME", "D:/hf_cache/hub")
-os.environ["TRANSFORMERS_CACHE"] = os.getenv("HF_HOME", "D:/hf_cache/hub")
-
 import asyncio
 import httpx
 from typing import TypedDict, Literal, List

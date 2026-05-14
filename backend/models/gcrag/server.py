@@ -1,6 +1,4 @@
 import os
-os.environ["HF_HOME"] = "D:/hf_cache/hub"
-os.environ["TRANSFORMERS_CACHE"] = "D:/hf_cache/hub"
 
 import tempfile
 import uuid
