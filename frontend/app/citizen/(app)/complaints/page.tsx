@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import {   useSearchParams ,useRouter } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { FilePlusCorner, MessageCircle, MapPin } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -23,8 +23,7 @@ import { Complaint, Evidence } from "@/types";
 function EvidenceRenderer({ evidence }: { evidence: Evidence }) {
   const src = evidence.file?.startsWith("http")
     ? evidence.file
-    : `${API_URL}${evidence.file?.replace(/^\/+/, "")}`;
-
+    : `${API_URL}/${evidence.file?.replace(/^\/+/, "")}`;
   switch (evidence.media_type) {
     case "image":
       return (
@@ -84,15 +83,18 @@ export default function AllComplaintsPage() {
   // Determine if showing "my complaints" or "all complaints"
   const filter = searchParams.get('filter');
   const isMyComplaints = filter === 'my';
-  const endpoint = isMyComplaints 
-    ? "citizens/complaints/my/" 
+  const endpoint = isMyComplaints
+    ? "citizens/complaints/my/"
     : "citizens/complaints/all/";
   const pageTitle = isMyComplaints ? "My Complaints" : "All Complaints";
 
   useEffect(() => {
     setLoading(true);
     REQUEST("GET", endpoint)
-      .then((res: any) => setComplaints(res || []))
+      .then((res: any) => {
+        setComplaints(res || []);
+        console.log(res);
+      })
       .catch((err) => {
         console.error(err);
         toast.error(err?.message || "Failed to load complaints");
@@ -211,7 +213,7 @@ export default function AllComplaintsPage() {
                 )}
               </CardContent>
               <CardFooter>
-                <Button onClick={()=>{handleComplaintClick(c)}}>
+                <Button onClick={() => { handleComplaintClick(c) }}>
                   View
                 </Button>
               </CardFooter>

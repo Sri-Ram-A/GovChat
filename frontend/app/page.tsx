@@ -15,9 +15,9 @@ export default function HeroPage() {
   const heroExitedRef = useRef(false)
 
   const HERO_FADE_IN_DELAY = 1000
-  const HERO_FADE_IN_DURATION = 6000
-  const HERO_ZOOM_DURATION = 3000
-  const CARDS_FADE_DURATION = 2000
+  const HERO_FADE_IN_DURATION = 1000
+  const HERO_ZOOM_DURATION = 1000
+  const CARDS_FADE_DURATION = 1000
 
   useEffect(() => {
     const t = setTimeout(() => setPhase('fadeInHero'), HERO_FADE_IN_DELAY)
@@ -72,9 +72,9 @@ export default function HeroPage() {
           ${phase === 'black'
             ? 'opacity-0'
             : phase === 'fadeInHero'
-              ? 'opacity-100 duration-6000'
+              ? 'opacity-100 duration-1000'
               : phase === 'cardsExit'
-                ? 'opacity-0 duration-2000'
+                ? 'opacity-0 duration-1000'
                 : 'opacity-100'
           }
         `}
@@ -103,11 +103,11 @@ export default function HeroPage() {
           ${phase === 'black'
             ? 'opacity-0'
             : phase === 'fadeInHero'
-              ? 'opacity-100 duration-6000'
+              ? 'opacity-100 duration-1000'
               : phase === 'heroIdle'
                 ? 'opacity-100'
                 : phase === 'heroExit'
-                  ? 'opacity-0 scale-[12] duration-3000'
+                  ? 'opacity-0 scale-[12] duration-1000'
                   : 'opacity-0 scale-[12]'
           }
         `}
@@ -155,11 +155,11 @@ export default function HeroPage() {
           absolute inset-0 flex items-center
           transition-opacity ease-in-out
           ${phase === 'cardsFadeIn'
-            ? 'opacity-100 duration-2000'
+            ? 'opacity-100 duration-1000'
             : phase === 'cardsIdle'
               ? 'opacity-100'
               : phase === 'cardsExit'
-                ? 'opacity-0 duration-2000'
+                ? 'opacity-0 duration-1000'
                 : 'opacity-0 pointer-events-none'
           }
         `}

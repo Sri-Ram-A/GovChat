@@ -1,77 +1,43 @@
 "use client";
 
-// ─── login/page.tsx ──────────────────────────────────────────────────────────
-// Changes from original:
-//  1. Stores BOTH access + refresh tokens on login (was only storing access)
-//  2. Named functions for all handlers (no inline arrows)
-//  3. Uses the shared REQUEST wrapper → auto-refresh works for subsequent calls
-//  4. Descriptive toast messages using Django's error shape
-// ─────────────────────────────────────────────────────────────────────────────
-
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { Loader2, Lock, User, Mail,Shield } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
-import { Loader2, Lock, User } from "lucide-react";
-import { REQUEST, setTokens } from "@/services/api";
-import { FieldWrapper } from "@/app/citizen/(auth)/register/page"; // reuse the wrapper
-
-interface LoginForm {
-  username: string;
-  password: string;
-}
+import { REQUEST, setTokens, setOnboardingNeeded } from "@/services/api";
 
 interface LoginResponse {
   access: string;
   refresh: string;
+  needs_onboarding: boolean;
 }
 
 export default function LoginPage() {
   const router = useRouter();
-  const [form, setForm] = useState<LoginForm>({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [visible, setVisible] = useState(false);
-  const [exiting, setExiting] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
 
-  useEffect(function mountAnimation() {
-    requestAnimationFrame(() => setVisible(true));
+  const [form, setForm] = useState({
+    username: "",
+    password: "",
+  });
+
+  useEffect(() => {
+    requestAnimationFrame(() => setIsVisible(true));
   }, []);
 
-  function handleUsernameChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setForm((prev) => ({ ...prev, username: e.target.value }));
-    if (error) setError("");
-  }
-
-  function handlePasswordChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setForm((prev) => ({ ...prev, password: e.target.value }));
-    if (error) setError("");
-  }
-
-  function navigateWithFade(path: string) {
-    setExiting(true);
-    setTimeout(() => router.push(path), 280);
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.username || !form.password) {
-      toast.error("Please enter your username and password.");
-      return;
-    }
-
-    setLoading(true);
     setError("");
+    setLoading(true);
 
     try {
       const res = await REQUEST<LoginResponse>("POST", "citizens/login/", {
@@ -79,131 +45,140 @@ export default function LoginPage() {
         password: form.password,
       });
 
-      if (!res?.access) {
-        throw new Error("Login failed — no token received.");
-      }
+      if (res?.access) {
+        setTokens(res.access, res.refresh);
+        setOnboardingNeeded(res.needs_onboarding);
+        toast.success("Welcome back!");
 
-      // WHY store both: refresh token is needed for the silent renewal in api.ts
-      setTokens(res.access, res.refresh);
-      toast.success("Welcome back!");
-      navigateWithFade("/citizen/home");
-    } catch (err: unknown) {
-      const message =
-        err && typeof err === "object" && "message" in err
-          ? String((err as { message: string }).message)
-          : "Invalid credentials. Please try again.";
+        setTimeout(() => {
+          router.push("/citizen/home");
+        }, 300);
+      } else {
+        throw new Error("Login failed - no token received");
+      }
+    } catch (err: any) {
+      const message = err?.message || "Invalid credentials";
       setError(message);
-      toast.error(message, { duration: 5000 });
+      toast.error(message);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
     <div
-      className={[
-        "relative min-h-screen flex items-center justify-center overflow-hidden",
-        "transition-all duration-300 ease-out",
-        exiting
-          ? "opacity-0 scale-[0.98]"
-          : visible
-            ? "opacity-100 translate-y-0"
-            : "opacity-0 translate-y-2",
-      ].join(" ")}
+      className={`
+        min-h-screen w-full grid lg:grid-cols-2 bg-background
+        transition-all duration-300 ease-out
+        ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}
+      `}
     >
-      {/* Video background */}
-      <div className="absolute inset-0 -z-10">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
-          className="h-full w-full object-cover opacity-90"
-        >
-          <source src="/background1.mp4" type="video/mp4" />
-        </video>
-        <div className="absolute inset-0 bg-black/20" />
+      {/* Left: Login form */}
+      <div className="flex items-center justify-center px-6 py-10 sm:px-10">
+        <div className="w-full max-w-md">
+          <div className="mb-6 flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg border bg-background shadow-sm">
+              <Shield className="h-4 w-4" />
+            </div>
+            <span className="text-sm font-medium">GovChat</span>
+          </div>
+
+          <Card className="border-0 shadow-none bg-transparent">
+            <CardHeader className="px-0 pb-6">
+              <CardTitle className="text-3xl font-semibold tracking-tight">
+                Login to your account
+              </CardTitle>
+              <CardDescription className="text-sm text-muted-foreground">
+                Enter your username and password to login to your account
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="px-0">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="username">Username</Label>
+                  <div className="relative">
+                    <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="username"
+                      type="username"
+                      placeholder="Username"
+                      value={form.username}
+                      onChange={(e) =>
+                        setForm((prev) => ({ ...prev, username: e.target.value }))
+                      }
+                      className="pl-10"
+                      autoComplete="username"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password">Password</Label>
+                    <Link
+                      href="/forgot-password"
+                      className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+                    >
+                      Forgot your password?
+                    </Link>
+                  </div>
+                  <div className="relative">
+                    <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={form.password}
+                      onChange={(e) =>
+                        setForm((prev) => ({ ...prev, password: e.target.value }))
+                      }
+                      className="pl-10"
+                      autoComplete="current-password"
+                    />
+                  </div>
+                </div>
+
+                {error && <p className="text-sm text-destructive">{error}</p>}
+
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full h-11"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Logging in...
+                    </>
+                  ) : (
+                    "Login"
+                  )}
+                </Button>
+              </form>
+
+              <p className="mt-6 text-center text-sm text-muted-foreground">
+                Don&apos;t have an account?{" "}
+                <Link href="/citizen/register" className="font-medium text-foreground hover:underline">
+                  Sign up
+                </Link>
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
-      <Card className="w-full max-w-md p-6 bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl">
-        <CardHeader className="text-center space-y-1 pb-4">
-          <div className="flex justify-center mb-2">
-            <div className="rounded-full bg-blue-500/20 p-3">
-              <Lock className="h-6 w-6 text-blue-400" />
-            </div>
-          </div>
-          <CardTitle className="text-2xl font-semibold text-white">
-            Welcome Back
-          </CardTitle>
-          <CardDescription className="text-white/60">
-            Sign in to your citizen account
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <FieldWrapper id="username" label="Username">
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
-                <Input
-                  id="username"
-                  autoComplete="username"
-                  placeholder="your_username"
-                  value={form.username}
-                  onChange={handleUsernameChange}
-                  className="pl-9 bg-white/10 border-white/20 text-white placeholder:text-white/30"
-                />
-              </div>
-            </FieldWrapper>
-
-            <FieldWrapper id="password" label="Password">
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
-                <Input
-                  id="password"
-                  type="password"
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  value={form.password}
-                  onChange={handlePasswordChange}
-                  className="pl-9 bg-white/10 border-white/20 text-white placeholder:text-white/30"
-                />
-              </div>
-            </FieldWrapper>
-
-            {error && (
-              <p className="text-sm text-red-400 text-center">{error}</p>
-            )}
-
-            <Button
-              type="submit"
-              className="w-full h-11 font-semibold"
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in…
-                </>
-              ) : (
-                "Sign In"
-              )}
-            </Button>
-          </form>
-
-          <p className="text-sm text-center mt-4 text-white/60">
-            Don&apos;t have an account?{" "}
-            <button
-              type="button"
-              onClick={() => navigateWithFade("/citizen/register")}
-              className="text-blue-400 hover:text-blue-300 font-medium transition-colors"
-            >
-              Register
-            </button>
-          </p>
-        </CardContent>
-      </Card>
+      {/* Right: Image panel */}
+      <div className="relative hidden lg:block">
+        <div className="absolute inset-0 bg-muted" />
+        <Image
+          src="/login.jpg"
+          alt="Login illustration"
+          fill
+          priority
+          className="object-cover"
+        />
+      </div>
     </div>
   );
 }

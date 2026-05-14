@@ -24,17 +24,15 @@ COPY *.py .
 COPY .env.example .env
 
 # Environment variables
-ENV NEO4J_URI=bolt://localhost:7687
+ENV NEO4J_URI=block
 ENV NEO4J_USER=neo4j
-ENV NEO4J_PASSWORD=Srinidhi@39
-ENV NEO4J_DATABASE=gcragdb
-ENV QDRANT_URL=http://localhost:6333
-ENV QDRANT_API_KEY=
-ENV LLM_API_KEY=
-ENV LLM_API_URL=https://api.groq.com/openai/v1/chat/completions
+ENV NEO4J_PASSWORD=block
+ENV NEO4J_DATABASE=neo4j
+
+ENV QDRANT_URL=block
+ENV QDRANT_API_KEY=block
+ENV LLM_API_URL=block
 ENV LLM_MODEL=llama-3.3-70b-versatile
-ENV HF_HOME=/app/hf_cache
-ENV TRANSFORMERS_CACHE=/app/hf_cache
 
 EXPOSE 8001
 

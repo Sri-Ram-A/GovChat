@@ -2,6 +2,7 @@ from django.urls import path
 from .views import complaints, create
 
 urlpatterns = [
+    # register departments
     path("jurisdictions/", create.JurisdictionAPIView.as_view()),
     path("domains/", create.DomainAPIView.as_view()),
     path("departments/", create.DepartmentAPIView.as_view()),

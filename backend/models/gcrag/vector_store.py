@@ -12,7 +12,7 @@ class VectorStore:
     VECTOR_SIZE = 1024
 
     def __init__(self):
-        self.url = os.getenv("QDRANT_URL", "http://localhost:6333")
+        self.url = os.getenv("QDRANT_URL")
         self.api_key = os.getenv("QDRANT_API_KEY")
         self.client: Optional[AsyncQdrantClient] = None
         self._initialized = False
