@@ -1,7 +1,4 @@
 import os
-os.environ["HF_HOME"] = os.getenv("HF_HOME", "D:/hf_cache/hub")
-os.environ["TRANSFORMERS_CACHE"] = os.getenv("HF_HOME", "D:/hf_cache/hub")
-
 import asyncio
 import httpx
 from typing import TypedDict, Literal, List
@@ -20,6 +17,7 @@ GCRAG_URL = os.getenv("GCRAG_URL", "http://localhost:8001")
 
 # -------- STATE --------
 
+
 class QueryState(TypedDict):
     question: str
     query_type: Literal["simple", "multi_topic", "listing", "unclear"]
@@ -34,6 +32,7 @@ class QueryState(TypedDict):
 
 # -------- NODES --------
 
+
 async def route_query(state: QueryState) -> QueryState:
     """
     Classify the query type using Groq.
@@ -46,22 +45,25 @@ async def route_query(state: QueryState) -> QueryState:
 - listing: asking to list/enumerate all items in a category
 - unclear: too vague to answer
 
-Query: "{state['question']}"
+Query: "{state["question"]}"
 
 Respond with ONLY one word: simple, multi_topic, listing, or unclear"""
 
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
     payload = {
         "model": GROQ_MODEL,
         "messages": [
-            {"role": "system", "content": "You are a query classifier. Respond with exactly one word."},
-            {"role": "user", "content": prompt}
+            {
+                "role": "system",
+                "content": "You are a query classifier. Respond with exactly one word.",
+            },
+            {"role": "user", "content": prompt},
         ],
         "temperature": 0.0,
-        "max_tokens": 10
+        "max_tokens": 10,
     }
 
     try:
@@ -69,10 +71,10 @@ Respond with ONLY one word: simple, multi_topic, listing, or unclear"""
             resp = await client.post(GROQ_ENDPOINT, json=payload, headers=headers)
             resp.raise_for_status()
             result = resp.json()["choices"][0]["message"]["content"].strip().lower()
-            
+
             if result not in ["simple", "multi_topic", "listing", "unclear"]:
                 result = "simple"
-            
+
             logger.info("[Orchestrator] Query classified as: {}", result)
             state["query_type"] = result
 
@@ -117,7 +119,7 @@ Respond with ONLY one word: simple, multi_topic, listing, or unclear"""
 
 #             state["answer"] = data.get("answer", "")
 #             state["graphs_used"] = [
-#                 g.get("section_graph_id", "") 
+#                 g.get("section_graph_id", "")
 #                 for g in data.get("graphs_used", [])
 #             ]
 #             state["confidence"] = data.get("confidence", 0.0)
@@ -133,7 +135,6 @@ Respond with ONLY one word: simple, multi_topic, listing, or unclear"""
 #     return state
 
 
-
 async def retrieve_context(state: QueryState) -> QueryState:
     if state.get("needs_clarification"):
         return state
@@ -143,20 +144,22 @@ async def retrieve_context(state: QueryState) -> QueryState:
     try:
         result = await _retrieve_answer_async(state["question"], state["top_k"])
         # for listing queries, re-call LLM with better prompt if answer is weak
-        if state["query_type"] == "listing" and "does not explicitly" in result.get("answer", ""):
+        if state["query_type"] == "listing" and "does not explicitly" in result.get(
+            "answer", ""
+        ):
             from retriever import _embed_question, _call_llm
             from vector_store import search as qdrant_search
-            
+
             query_embedding = await _embed_question(state["question"])
             hits = await qdrant_search(query_embedding, top_k=10)
-            
+
             # extract descriptions from metadata as listing context
             descriptions = []
             for hit in hits:
                 desc = hit.get("metadata", {}).get("description", "")
                 if desc:
                     descriptions.append(desc)
-            
+
             listing_context = "\n".join(descriptions)
             listing_prompt = (
                 f"Based on these document section descriptions, list all the services/applications mentioned:\n\n"
@@ -164,24 +167,21 @@ async def retrieve_context(state: QueryState) -> QueryState:
                 f"Question: {state['question']}\n"
                 f"Provide a complete numbered list of all services/applications found:"
             )
-            
+
             better_answer = await _call_llm(listing_prompt)
             state["answer"] = better_answer
         state["answer"] = result.get("answer", "")
         state["graphs_used"] = result.get("graphs_used", [])
         state["confidence"] = result.get("confidence", 0.0)
-        logger.info("[Orchestrator] Retrieved answer, confidence={:.2f}", state["confidence"])
+        logger.info(
+            "[Orchestrator] Retrieved answer, confidence={:.2f}", state["confidence"]
+        )
     except Exception as e:
         logger.error("[Orchestrator] Retrieval failed: {}", e)
         state["answer"] = "I encountered an error retrieving information."
         state["confidence"] = 0.0
 
     return state
-
-
-
-
-
 
 
 async def handle_unclear(state: QueryState) -> QueryState:
@@ -210,9 +210,14 @@ async def validate_answer(state: QueryState) -> QueryState:
     confidence = state.get("confidence", 0.0)
 
     dont_know_phrases = [
-        "i don't know", "i do not know", "cannot determine",
-        "not found", "no information", "cannot be determined",
-        "does not contain", "not explicitly"
+        "i don't know",
+        "i do not know",
+        "cannot determine",
+        "not found",
+        "no information",
+        "cannot be determined",
+        "does not contain",
+        "not explicitly",
     ]
 
     is_unhelpful = any(phrase in answer.lower() for phrase in dont_know_phrases)
@@ -228,6 +233,7 @@ async def validate_answer(state: QueryState) -> QueryState:
 
 # -------- ROUTING FUNCTIONS --------
 
+
 def should_clarify(state: QueryState) -> str:
     if state.get("query_type") == "unclear":
         return "clarify"
@@ -235,6 +241,7 @@ def should_clarify(state: QueryState) -> str:
 
 
 # -------- BUILD GRAPH --------
+
 
 def build_orchestrator():
     graph = StateGraph(QueryState)
@@ -250,12 +257,7 @@ def build_orchestrator():
 
     # add edges
     graph.add_conditional_edges(
-        "router",
-        should_clarify,
-        {
-            "clarify": "clarify",
-            "retrieve": "retrieve"
-        }
+        "router", should_clarify, {"clarify": "clarify", "retrieve": "retrieve"}
     )
     graph.add_edge("retrieve", "validate")
     graph.add_edge("validate", END)
@@ -284,7 +286,7 @@ async def process_query(question: str) -> dict:
         "graphs_used": [],
         "confidence": 0.0,
         "needs_clarification": False,
-        "clarification_message": ""
+        "clarification_message": "",
     }
 
     result = await orchestrator.ainvoke(initial_state)
@@ -294,7 +296,7 @@ async def process_query(question: str) -> dict:
         "query_type": result["query_type"],
         "graphs_used": result["graphs_used"],
         "confidence": result["confidence"],
-        "needs_clarification": result.get("needs_clarification", False)
+        "needs_clarification": result.get("needs_clarification", False),
     }
 
 
@@ -309,6 +311,7 @@ def process_query_sync(question: str) -> dict:
 
     if loop and loop.is_running():
         import concurrent.futures
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
             future = pool.submit(lambda: asyncio.run(process_query(question)))
             return future.result(timeout=120)

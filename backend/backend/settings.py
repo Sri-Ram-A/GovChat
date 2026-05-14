@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 from dotenv import load_dotenv ###
+from datetime import timedelta 
+from .helper import get_local_ip
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,11 +27,9 @@ SECRET_KEY = 'django-insecure-vu2+dh72-w741f+xkl)+e7wc=7phl%k1ez$+=rkpdt=4%-r5v@
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-
 ALLOWED_HOSTS = ['*','192.168.1.6']
 
 # Application definition
-
 INSTALLED_APPS = [
     'assistant', ###
     'citizens', ###
@@ -71,7 +71,6 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'backend.urls'
-
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -93,7 +92,6 @@ ASGI_APPLICATION = 'backend.asgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -115,19 +113,14 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
-
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
-
 STATIC_URL = 'static/'
 
 ### BELOW ADDED BY ME
@@ -136,15 +129,13 @@ MODEL_PATH = "vosk-model-small-en-in-0.4"
 CORS_ALLOW_ALL_ORIGINS = True
 
 ### URL
-from .helper import get_local_ip
 IP = get_local_ip()
 STT_URL = IP + ":50051"
 TTS_URL = IP + ":50052"
 ITT_URL = IP + ":50053"
 TTT_URL = IP + ":50054"
 
-###  JWT
-from datetime import timedelta 
+###  JWT : https://medium.com/django-unleashed/securing-django-rest-apis-with-jwt-authentication-using-simple-jwt-a-step-by-step-guide-28efa84666fe
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
