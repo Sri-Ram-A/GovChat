@@ -31,15 +31,21 @@ class VectorStore:
             raise
 
     async def _ensure_collection(self) -> None:
-        try:
-            await self.client.get_collection(collection_name=self.COLLECTION_NAME)
+        if await self.client.collection_exists(collection_name=self.COLLECTION_NAME):
             logger.info("Qdrant collection '{}' already exists", self.COLLECTION_NAME)
-        except Exception:
-            logger.info("Creating Qdrant collection '{}'", self.COLLECTION_NAME)
+            return
+
+        logger.info("Creating Qdrant collection '{}'", self.COLLECTION_NAME)
+        try:
             await self.client.create_collection(
                 collection_name=self.COLLECTION_NAME,
                 vectors_config=rest.VectorParams(size=self.VECTOR_SIZE, distance=rest.Distance.COSINE),
             )
+        except Exception as e:
+            if "already exists" in str(e).lower() or "409" in str(e):
+                logger.info("Qdrant collection '{}' already exists", self.COLLECTION_NAME)
+                return
+            raise
 
     async def upsert_embedding(self, graph_id: str, embedding: List[float], metadata: Dict) -> bool:
         logger.info("Upserting embedding for graph_id={}", graph_id)

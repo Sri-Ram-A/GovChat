@@ -115,7 +115,7 @@ Key relations: {', '.join(relation_strs[:5])}
 Description:"""
 
     headers = {
-        "Authorization": f"Bearer {os.getenv('LLM_API_KEY')}",
+        "Authorization": f"Bearer {os.getenv('LLM_API_KEY1')}",
         "Content-Type": "application/json"
     }
     payload = {

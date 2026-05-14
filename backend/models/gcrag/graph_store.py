@@ -4,6 +4,7 @@ os.environ["HF_HOME"] = os.getenv("HF_HOME", "D:/hf_cache")
 from dotenv import load_dotenv
 load_dotenv()
 
+import asyncio
 import os
 import uuid
 from typing import Dict, List, Optional
@@ -75,82 +76,92 @@ class GraphStore:
             document_id
         )
 
-        driver = await self._get_driver()
-        async with driver.session(database=self.database) as session:
+        for attempt in range(2):
             try:
-                await self._ensure_constraints(session)
+                driver = await self._get_driver()
+                async with driver.session(database=self.database) as session:
+                    await self._ensure_constraints(session)
 
-                section_id = section.get("section_id", "")
-                raw_text = section.get("raw_text", "")
-                entities = section.get("entities", [])
-                relations = section.get("relations", [])
+                    section_id = section.get("section_id", "")
+                    raw_text = section.get("raw_text", "")
+                    entities = section.get("entities", [])
+                    relations = section.get("relations", [])
 
-                # Create Section node
-                await session.run(
-                    """
-                    CREATE (s:Section {
-                        id: $section_graph_id,
-                        document_id: $document_id,
-                        section_id: $section_id,
-                        raw_text: $raw_text
-                    })
-                    """,
-                    section_graph_id=section_graph_id,
-                    document_id=document_id,
-                    section_id=section_id,
-                    raw_text=raw_text
-                )
-                logger.debug("Created Section node {}", section_graph_id)
-
-                # Create Entity nodes and link to Section via HAS_ENTITY
-                for entity in entities:
-                    entity_id = entity.get("id", str(uuid.uuid4()))
-                    entity_name = entity.get("name", "")
-                    entity_label = entity.get("label", "")
-
+                    # Create Section node
                     await session.run(
                         """
-                        MERGE (e:Entity {id: $entity_id})
-                        SET e.name = $entity_name, e.label = $entity_label
-                        WITH e
-                        MATCH (s:Section {id: $section_graph_id})
-                        MERGE (s)-[:HAS_ENTITY]->(e)
-                        """,
-                        entity_id=entity_id,
-                        entity_name=entity_name,
-                        entity_label=entity_label,
-                        section_graph_id=section_graph_id
-                    )
-                logger.debug("Created {} entities for section {}", len(entities), section_graph_id)
-
-                # Create relations between entities
-                for relation in relations:
-                    from_name = relation.get("from", "")
-                    to_name = relation.get("to", "")
-                    rel_type = relation.get("type", "RELATED").upper().replace(" ", "_").replace("-", "_")
-
-                    await session.run(
-                        f"""
-                        MATCH (s:Section {{id: $section_graph_id}})
-                        MATCH (s)-[:HAS_ENTITY]->(a:Entity {{name: $from_name}})
-                        MATCH (s)-[:HAS_ENTITY]->(b:Entity {{name: $to_name}})
-                        MERGE (a)-[:{rel_type}]->(b)
+                        MERGE (s:Section {id: $section_graph_id})
+                        SET s.document_id = $document_id,
+                            s.section_id = $section_id,
+                            s.raw_text = $raw_text
                         """,
                         section_graph_id=section_graph_id,
-                        from_name=from_name,
-                        to_name=to_name
+                        document_id=document_id,
+                        section_id=section_id,
+                        raw_text=raw_text
                     )
-                logger.debug("Created {} relations for section {}", len(relations), section_graph_id)
+                    logger.debug("Created Section node {}", section_graph_id)
 
-                logger.info(
-                    "Successfully stored section graph {} with {} entities and {} relations",
-                    section_graph_id,
-                    len(entities),
-                    len(relations)
-                )
-                return section_graph_id
+                    # Create Entity nodes and link to Section via HAS_ENTITY
+                    for entity in entities:
+                        entity_id = entity.get("id", str(uuid.uuid4()))
+                        entity_name = entity.get("name", "")
+                        entity_label = entity.get("label", "")
+
+                        await session.run(
+                            """
+                            MERGE (e:Entity {id: $entity_id})
+                            SET e.name = $entity_name, e.label = $entity_label
+                            WITH e
+                            MATCH (s:Section {id: $section_graph_id})
+                            MERGE (s)-[:HAS_ENTITY]->(e)
+                            """,
+                            entity_id=entity_id,
+                            entity_name=entity_name,
+                            entity_label=entity_label,
+                            section_graph_id=section_graph_id
+                        )
+                    logger.debug("Created {} entities for section {}", len(entities), section_graph_id)
+
+                    # Create relations between entities
+                    for relation in relations:
+                        from_name = relation.get("from", "")
+                        to_name = relation.get("to", "")
+                        rel_type = relation.get("type", "RELATED").upper().replace(" ", "_").replace("-", "_")
+
+                        await session.run(
+                            f"""
+                            MATCH (s:Section {{id: $section_graph_id}})
+                            MATCH (s)-[:HAS_ENTITY]->(a:Entity {{name: $from_name}})
+                            MATCH (s)-[:HAS_ENTITY]->(b:Entity {{name: $to_name}})
+                            MERGE (a)-[:{rel_type}]->(b)
+                            """,
+                            section_graph_id=section_graph_id,
+                            from_name=from_name,
+                            to_name=to_name
+                        )
+                    logger.debug("Created {} relations for section {}", len(relations), section_graph_id)
+
+                    logger.info(
+                        "Successfully stored section graph {} with {} entities and {} relations",
+                        section_graph_id,
+                        len(entities),
+                        len(relations)
+                    )
+                    return section_graph_id
 
             except Exception as e:
+                if attempt == 0 and (
+                    "defunct connection" in str(e).lower()
+                    or "unable to retrieve routing information" in str(e).lower()
+                    or "connectionreseterror" in str(e).lower()
+                ):
+                    logger.warning("Retrying Neo4j store after transient connection error: {}", e)
+                    if self.driver:
+                        await self.driver.close()
+                        self.driver = None
+                    await asyncio.sleep(1)
+                    continue
                 logger.error("Failed to store section graph: {}", e)
                 raise
 
@@ -255,6 +266,16 @@ class GraphStore:
         driver = await self._get_driver()
         async with driver.session(database=self.database) as session:
             try:
+                section_result = await session.run(
+                    """
+                    MATCH (s:Section {id: $section_graph_id})
+                    RETURN s.raw_text as raw_text
+                    """,
+                    section_graph_id=section_graph_id
+                )
+                section_record = await section_result.single()
+                raw_text = section_record["raw_text"] if section_record and section_record["raw_text"] else ""
+
                 # Find entities matching keywords (case-insensitive)
                 keyword_filters = " OR ".join(
                     [f"toLower(e.name) CONTAINS toLower($kw{i})" for i in range(len(query_keywords))]
@@ -284,20 +305,16 @@ class GraphStore:
                 # If no entities match, fall back to raw_text
                 if not matched_entities:
                     logger.debug("No matching entities for keywords, falling back to raw_text")
-                    section_result = await session.run(
-                        """
-                        MATCH (s:Section {id: $section_graph_id})
-                        RETURN s.raw_text as raw_text
-                        """,
-                        section_graph_id=section_graph_id
-                    )
-                    section_record = await section_result.single()
-                    if section_record and section_record["raw_text"]:
-                        return section_record["raw_text"]
+                    if raw_text:
+                        return raw_text
                     return "No relevant information found in this section."
 
                 # Build context from matched entities and their relations
                 context_parts = []
+                if raw_text:
+                    context_parts.append(f"Source text:\n{raw_text}")
+                    context_parts.append("Graph matches:")
+
                 for entity in matched_entities:
                     entity_id = entity["id"]
                     entity_name = entity["name"]

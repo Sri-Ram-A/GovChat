@@ -12,7 +12,7 @@ from vector_store import search as qdrant_search
 
 
 LLM_API_URL = os.getenv("LLM_API_URL")
-LLM_API_KEY = os.getenv("LLM_API_KEY")
+LLM_API_KEY = os.getenv("LLM_API_KEY2")
 LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
 
 SYSTEM_PROMPT = (
@@ -159,7 +159,9 @@ async def _retrieve_answer_async(question: str, top_k: int = 3) -> Dict[str, Any
     logger.info("Merged context length: {} characters", len(merged_context))
 
     prompt = (
-        f"Use the following graph context to answer the question. If the answer cannot be found, say so.\n\n"
+        f"Use the following graph context to answer the question. Prefer exact wording from Source text. "
+        f"Do not omit numeric criteria such as ages, date ranges, fees, income limits, percentages, or deadlines. "
+        f"If the answer cannot be found, say so.\n\n"
         f"Context:\n{merged_context}\n\nQuestion: {question}\nAnswer:"
     )
 

@@ -15,7 +15,7 @@ load_dotenv()
 
 # Groq configuration
 GROQ_API_KEY = os.getenv("LLM_API_KEY")
-GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_MODEL = os.getenv("LLM_MODEL", "llama-3.3-70b-versatile")
 GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
 
 if not GROQ_API_KEY:
@@ -29,6 +29,25 @@ def chunk_elements(elements: List[Dict]) -> List[Dict]:
     FIELD_LABELS = {
         "eligibility", "supporting document", "application fee",
         "service charge", "delivery time", "procedure for applying",
+    }
+    SECTION_HEADINGS = {
+        "about",
+        "basic information",
+        "details",
+        "description",
+        "benefit",
+        "benefits",
+        "eligibility",
+        "eligibility criteria",
+        "exclusions",
+        "application process",
+        "how to apply",
+        "documents required",
+        "required documents",
+        "payment procedure",
+        "track application status",
+        "faqs",
+        "sources and references",
     }
 
     def is_field_label(t: str) -> bool:
@@ -59,6 +78,47 @@ def chunk_elements(elements: List[Dict]) -> List[Dict]:
         # valid service title: starts with number+dot OR "department:"
         return (bool(re.match(r'^\d+\.', t_stripped)) or
                 t_lower.startswith("department:"))
+
+    def is_procedure_text(t: str) -> bool:
+        t_lower = t.strip().lower()
+        procedure_keywords = [
+            "applicant will", "department will", "once reviewed",
+            "once processed", "applicant submit", "will submit",
+            "will review", "will receive", "click on", "upload the",
+        ]
+        return any(t_lower.startswith(kw) or kw in t_lower for kw in procedure_keywords)
+
+    def normalize_heading(t: str) -> str:
+        t = t.lower().strip()
+        t = re.sub(r"[:\-\u2013\u2014]+$", "", t).strip()
+        return re.sub(r"\s+", " ", t)
+
+    def is_section_heading(t: str) -> bool:
+        normalized = normalize_heading(t)
+        return normalized in SECTION_HEADINGS
+
+    def is_numbered_service_element(element: Dict) -> bool:
+        text = element.get("text", "").strip()
+        element_type = element.get("element_type", "").strip().lower()
+        if not re.match(r'^\d+\.', text):
+            return False
+        if is_procedure_text(text):
+            return False
+        return element_type in {"title", "listitem"}
+
+    numbered_service_count = sum(1 for element in elements if is_numbered_service_element(element))
+
+    if numbered_service_count < 3:
+        logger.info(
+            "Detected single-scheme document: {} numbered service titles found",
+            numbered_service_count,
+        )
+        return chunk_single_scheme_elements(elements, is_section_heading)
+
+    logger.info(
+        "Detected service-list document: {} numbered service titles found",
+        numbered_service_count,
+    )
 
     chunks = []
     current_chunk = None
@@ -96,10 +156,7 @@ def chunk_elements(elements: List[Dict]) -> List[Dict]:
 
         elif element_type in ["narrativetext", "listitem", "text"]:
             # check if this listitem is actually a service name (e.g. "1. Application To Grant...")
-            procedure_keywords = ["applicant will", "department will", "once reviewed", 
-                      "once processed", "will submit", "will review", "will receive"]
-            is_procedure = any(text.lower().startswith(kw) or kw in text.lower() 
-                   for kw in procedure_keywords)
+            is_procedure = is_procedure_text(text)
 
             if element_type == "listitem" and re.match(r'^\d+\.', text.strip()) and not is_procedure:
                 # start new chunk for this service
@@ -130,6 +187,74 @@ def chunk_elements(elements: List[Dict]) -> List[Dict]:
         chunks.append(current_chunk)
 
     logger.info("Created {} chunks from {} elements", len(chunks), len(elements))
+    return chunks
+
+
+def chunk_single_scheme_elements(elements: List[Dict], is_section_heading) -> List[Dict]:
+    logger.info("Chunking single-scheme document by known section headings")
+
+    chunks = []
+    current_chunk = None
+    chunk_counter = 0
+    scheme_title = None
+
+    def start_chunk(title: str, element: Dict) -> None:
+        nonlocal current_chunk, chunk_counter
+        if current_chunk and current_chunk.get("elements"):
+            chunks.append(current_chunk)
+
+        chunk_counter += 1
+        display_title = f"{scheme_title} / {title}" if scheme_title else title
+        current_chunk = {
+            "chunk_id": f"chunk_{chunk_counter}",
+            "title": display_title,
+            "elements": [element],
+            "raw_text": f"Scheme: {scheme_title}\nSection: {title}" if scheme_title else title,
+            "page_number": element.get("page_number", 0),
+        }
+
+        text = element.get("text", "").strip()
+        if text and text != title:
+            current_chunk["raw_text"] += "\n" + text
+
+    for element in elements:
+        element_type = element.get("element_type", "").strip().lower()
+        text = element.get("text", "").strip()
+        if not text:
+            continue
+
+        if scheme_title is None and element_type == "title":
+            scheme_title = text
+            continue
+
+        if element_type == "title" and is_section_heading(text):
+            start_chunk(text, element)
+            continue
+
+        if current_chunk is not None:
+            current_chunk["elements"].append(element)
+            current_chunk["raw_text"] += "\n" + text
+            continue
+
+        start_chunk("Overview", element)
+
+    if current_chunk and current_chunk.get("elements"):
+        chunks.append(current_chunk)
+
+    if not chunks and scheme_title:
+        chunks.append({
+            "chunk_id": "chunk_1",
+            "title": scheme_title,
+            "elements": elements,
+            "raw_text": "\n".join(
+                element.get("text", "").strip()
+                for element in elements
+                if element.get("text", "").strip()
+            ),
+            "page_number": elements[0].get("page_number", 0) if elements else 0,
+        })
+
+    logger.info("Created {} single-scheme chunks from {} elements", len(chunks), len(elements))
     return chunks
 
 
