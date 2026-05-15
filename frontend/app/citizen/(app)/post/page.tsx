@@ -467,7 +467,7 @@ export default function CitizenPostPage() {
                   <SelectGroup>
                     {departments.map((dep) => (
                       <SelectItem key={dep.id} value={dep.id.toString()}>
-                        {dep.name}
+                        {dep.name} - {dep.code}
                       </SelectItem>
                     ))}
                   </SelectGroup>
