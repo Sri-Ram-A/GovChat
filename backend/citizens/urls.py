@@ -10,6 +10,12 @@ urlpatterns = [
         name="citizen-register",
     ),
     path("login/", create.CitizenLoginAPIView.as_view(), name="citizen-register"),
+    path(
+        "complete-onboarding/",
+        create.CompleteOnboardingAPIView.as_view(),
+        name="complete-onboarding",
+    ),
+    path("me/", create.MeAPIView.as_view(), name="citizen-me"),
     # complaint creation
     path("ai/caption_image/", complaints.ImageCaptionAPIView.as_view()),
     path("ai/resolve_location/", complaints.ResolveLocationAPIView.as_view()),

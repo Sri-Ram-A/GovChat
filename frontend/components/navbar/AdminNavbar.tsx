@@ -16,27 +16,18 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: "Home", href: "/main" },
+  { label: "Home", href: "/" },
   {
     label: "Services",
     items: [
       { label: "View Map", href: "/map" },
       { label: "View Complaints", href: "/admin/complaints" },
       { label: "View Clusters", href: "/admin/groups" },
-      { label: "About", href: "/about" },
       { label: "Home", href: "/admin/home" },
     ],
   },
-  {
-    label: "Resources",
-    items: [
-      { label: "Guidelines", href: "/resources/guidelines" },
-      { label: "FAQs", href: "/resources/faq" },
-      { label: "Contact Us", href: "/resources/contact" },
-      { label: "Announcements", href: "/resources/announcements" },
-    ],
-  },
-  { label: "About Us", href: "/about-us" },
+
+  { label: "About Us", href: "/admin/about" },
 ];
 
 export default function GovernmentNavbar() {
@@ -49,7 +40,7 @@ export default function GovernmentNavbar() {
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div className="flex items-center justify-between">
           {/* Logo Section */}
-          <Link href="/main" className="flex items-center gap-3 group">
+          <Link href="/" className="flex items-center gap-3 group">
             <div className="p-2.5 rounded-lg bg-primary/90 text-primary-foreground group-hover:bg-primary transition-colors shadow-lg">
               <Shield className="h-6 w-6" />
             </div>
@@ -150,18 +141,8 @@ export default function GovernmentNavbar() {
                     My Profile
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/citizen/complaints" className="flex items-center gap-2 cursor-pointer">
-                    <FileText className="h-4 w-4" />
-                    My Complaints
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/citizen/notifications" className="flex items-center gap-2 cursor-pointer">
-                    <Bell className="h-4 w-4" />
-                    Notifications
-                  </Link>
-                </DropdownMenuItem>
+
+
                 <div className="my-2 border-t border-border" />
                 <DropdownMenuItem className="text-destructive cursor-pointer flex items-center gap-2">
                   <LogOut className="h-4 w-4" />

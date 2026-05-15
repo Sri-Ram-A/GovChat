@@ -232,3 +232,4 @@ class UpvoteComplaintView(APIView):
         Complaint.objects.filter(pk=pk).update(likes_count=F("likes_count") + 1)
         complaint.refresh_from_db()
         return Response({"liked": True, "likes_count": complaint.likes_count})
+

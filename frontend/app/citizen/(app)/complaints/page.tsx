@@ -140,9 +140,8 @@ function ComplaintCard({
   const hasLocation = complaint.city || complaint.address_line_1;
 
   return (
-    <Card className="bg-background border-none shadow-none rounded-none border-b border-neutral-100 dark:border-neutral-900 pb-6 mb-6 last:border-none group">
+    <Card className="bg-background rounded border-secondary p-4 shadow-none border-b pb-6 mb-6 group">
       <CardContent className="p-0 space-y-3">
-
         {/* Top Meta Header Row */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
@@ -151,7 +150,7 @@ function ComplaintCard({
                 {initials}
               </AvatarFallback>
             </Avatar>
-            <span className="text-xs font-medium text-neutral-800 dark:text-neutral-200">{complaint.citizen ?? "Citizen"}</span>
+            <span className="text-xs font-medium text-foreground">{complaint.citizen ?? "Citizen"}</span>
             <span className="text-neutral-300 dark:text-neutral-700 text-xs">·</span>
             <span className="inline-flex items-center gap-1 text-xs text-neutral-400 dark:text-neutral-500">
               <Clock className="h-3 w-3" />

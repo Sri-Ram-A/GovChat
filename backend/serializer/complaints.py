@@ -220,11 +220,9 @@ class GroupTimelineCreateByHandlerSerializer(serializers.ModelSerializer):
     group = serializers.PrimaryKeyRelatedField(
         queryset=complaints_entity.ComplaintGroup.objects.all()
     )
-
     class Meta:
         model = complaints_entity.GroupTimeline
         exclude = ["admin"]  # admin field left null; handler field set in create()
-
     def create(self, validated_data):
         request = self.context["request"]  # noqa: F841
         return complaints_entity.GroupTimeline.objects.create(
