@@ -32,12 +32,15 @@ urlpatterns = [
         lambda request: HttpResponse("Welcome to my API! Explore the endpoints."),
         name="welcome",
     ),
+    # schemas
     path("schema/", SpectacularAPIView.as_view(), name="schema"),
     path("swagger/", SpectacularSwaggerView.as_view(url_name="schema")),
     path("schema-viewer/", include("schema_viewer.urls")),
+    # api for frontend
     path("api/citizens/", include("citizens.urls")),
     path("api/admins/", include("admins.urls")),
     path("api/handlers/", include("handlers.urls")),
+    # jwt token for user for refresh
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
