@@ -33,7 +33,8 @@ class RecommendationsView(APIView):
                 "status": "error",
                 "message": str(e)
             }, status=500)
-        
+
+
 class SchemeDetailView(APIView):
     permission_classes = [IsAuthenticated]
     
@@ -42,9 +43,12 @@ class SchemeDetailView(APIView):
             SUPABASE_URL = os.getenv("SUPABASE_DATABASE_URL") or os.getenv("DATABASE_URL")
             SSL_MODE = os.getenv("DATABASE_SSLMODE", "require")
             
+            # Using exact column names from your database
             sql = """
-                SELECT slug, name, ministry, level, brief_description,
-                       eligibility, benefits, categories, tags, application_url
+                SELECT 
+                    slug, name, short_title, level, ministry,
+                    brief_description, eligibility, benefits, 
+                    application_process, application_url, categories, tags
                 FROM schemes
                 WHERE slug = %s
             """
@@ -57,17 +61,21 @@ class SchemeDetailView(APIView):
             if not row:
                 return Response({"status": "error", "message": "Scheme not found"}, status=404)
                 
+            # Row indices (0-11) matching the SELECT order above
             scheme = {
                 "slug": row[0],
                 "name": row[1],
-                "ministry": row[2],
-                "level": row[3],
-                "brief_description": row[4],
-                "eligibility": row[5],
-                "benefits": row[6],
-                "categories": row[7] or [],
-                "tags": row[8] or [],
-                "application_url": row[9],
+                "short_title": row[2] or "",
+                "level": row[3] or "",
+                "ministry": row[4] or "",
+                "brief_description": row[5] or "",
+                "description": row[6] or "",
+                "eligibility": row[6] or "",
+                "benefits": row[7] or "",
+                "application_process": row[8] or "",
+                "application_url": row[9] or "",
+                "categories": row[10] if row[10] else [],
+                "tags": row[11] if row[11] else [],
             }
             
             return Response({"status": "success", "scheme": scheme})

@@ -40,7 +40,7 @@ def get_profile_keywords(citizen_profile) -> list[str]:
 def get_search_keywords(citizen_profile, limit: int = 20) -> list[str]:
     """Extract keywords from recent search history."""
     # Fix: Import UserSearchHistory from entities.models
-    from entities.models import UserSearchHistory
+    from entities.citizens import UserSearchHistory
 
     recent = UserSearchHistory.objects.filter(
         citizen=citizen_profile

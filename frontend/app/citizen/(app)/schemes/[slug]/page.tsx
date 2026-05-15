@@ -8,14 +8,16 @@ import { getStoredToken } from '@/services/auth';
 interface Scheme {
   slug: string;
   name: string;
-  ministry: string;
+  short_title: string;
   level: string;
+  ministry: string;
   brief_description: string;
   eligibility: string;
   benefits: string;
+  application_process: string;
+  application_url: string;
   categories: string[];
   tags: string[];
-  application_url: string;
 }
 
 export default function SchemeDetailPage() {
@@ -108,9 +110,14 @@ export default function SchemeDetailPage() {
           {/* Header */}
           <div className="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-6">
             <div className="flex justify-between items-start gap-4">
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex-grow">
-                {scheme.name}
-              </h1>
+              <div className="flex-1">
+                {scheme.short_title && (
+                  <p className="text-sm text-blue-600 mb-1">{scheme.short_title}</p>
+                )}
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+                  {scheme.name}
+                </h1>
+              </div>
               <span className={`px-3 py-1 text-sm font-medium rounded-full whitespace-nowrap ${
                 scheme.level === 'Central' 
                   ? 'bg-blue-100 text-blue-800'
@@ -124,7 +131,7 @@ export default function SchemeDetailPage() {
           
           {/* Content */}
           <div className="p-6 space-y-6">
-            {/* Description */}
+            {/* Brief Description */}
             {scheme.brief_description && (
               <div>
                 <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
@@ -135,6 +142,7 @@ export default function SchemeDetailPage() {
                 </p>
               </div>
             )}
+            
             
             {/* Eligibility */}
             {scheme.eligibility && (
@@ -159,6 +167,20 @@ export default function SchemeDetailPage() {
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="text-gray-700 leading-relaxed whitespace-pre-line">
                     {scheme.benefits}
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* How to Apply */}
+            {scheme.application_process && (
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                  <span className="mr-2">📋</span> How to Apply
+                </h2>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="text-gray-700 leading-relaxed whitespace-pre-line">
+                    {scheme.application_process}
                   </div>
                 </div>
               </div>
