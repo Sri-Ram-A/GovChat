@@ -7,6 +7,8 @@ from .tts_client import TTSClient
 from .gcrag_client import GCRAGClient
 from django.conf import settings
 
+from entities.models import CitizenProfile, UserSearchHistory
+
 STT_URL = settings.STT_URL
 TTS_URL = settings.TTS_URL
 TTT_URL = settings.TTT_URL
@@ -33,6 +35,15 @@ class ChatConsumer(WebsocketConsumer):
             elif msg.get("action") == "finalize":
                 self.stt.stop()
             elif msg.get("type") == "text":
+                # Save search history
+                try:
+                    profile = CitizenProfile.objects.get(user=self.scope["user"])
+                    UserSearchHistory.objects.create(
+                        citizen=profile,
+                        search_text=msg["text"].strip()
+                    )
+                except Exception:
+                    pass
                 response_text = self.ttt.response(msg["text"])
 
                 self.send(text_data=json.dumps({
@@ -52,6 +63,17 @@ class ChatConsumer(WebsocketConsumer):
         # 2️⃣ Only act on final transcript
         if not is_final or not text.strip():
             return
+        
+        try:
+            profile = CitizenProfile.objects.get(user=self.scope["user"])
+
+            UserSearchHistory.objects.create(
+                citizen=profile,
+                search_text=text.strip()
+            )
+
+        except Exception as e:
+           logger.warning(f"Failed to save search history: {e}")
 
         # 3️⃣ Get response from TTT
         response_text = self.ttt.response(text)[:150]

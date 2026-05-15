@@ -24,3 +24,19 @@ class CitizenProfile(models.Model):
 
     def __str__(self):
         return f"{self.user.username}"
+    
+class UserSearchHistory(models.Model):
+    citizen = models.ForeignKey(
+        CitizenProfile,
+        on_delete=models.CASCADE,
+        related_name="search_history"
+    )
+    search_text = models.CharField(max_length=500)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "citizen_search_history"
+        ordering = ["-timestamp"]
+
+    def __str__(self):
+        return f"{self.citizen.user.username}: {self.search_text}"

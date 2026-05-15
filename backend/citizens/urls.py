@@ -1,5 +1,6 @@
 from django.urls import path
 from .views import create,complaints
+from .views.recommendations import RecommendationsView, SchemeDetailView
 
 urlpatterns = [
     path('', create.CitizenListAPIView.as_view(), name='citizen-list'),
@@ -15,6 +16,8 @@ urlpatterns = [
 
 
     path("complaints/all/", complaints.AllComplaintsView.as_view()),
+    path("recommendations/", RecommendationsView.as_view(), name="recommendations"),
+    path("schemes/<str:slug>/", SchemeDetailView.as_view(), name="scheme-detail"),
 
 
 ]
