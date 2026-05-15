@@ -23,6 +23,7 @@ const navItems: NavItem[] = [
       { label: "View Map", href: "/map" },
       { label: "View Complaints", href: "/admin/complaints" },
       { label: "View Clusters", href: "/admin/groups" },
+      { label: "Add Documents", href: "/admin/gcrag" },
       { label: "Home", href: "/admin/home" },
     ],
   },

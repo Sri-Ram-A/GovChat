@@ -1,28 +1,36 @@
-"use client";
-
-import React, { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { 
-  Camera, 
-  Sparkles, 
-  MapPin, 
-  UploadCloud, 
-  Trash2, 
-  Send, 
+"use client"
+import React, { useEffect, useRef, useState } from "react"
+import FormField from "@/components/reusables/forms/FormField"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { useRouter } from "next/navigation"
+import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
+import { Department, ComplaintCreatePayload } from "@/types"
+import { REQUEST } from "@/services/api"
+import { toast } from "sonner"
+import {
+  MapPin,
+  Sparkles,
+  Upload,
+  X,
+  FileText,
+  FileAudio,
+  FileVideo,
+  Image as ImageIcon,
   Loader2,
+  SendHorizonal,
   Building2,
-  Info
-} from "lucide-react";
-
-import { REQUEST } from "@/services/api";
-import { Department, ComplaintCreatePayload } from "@/types";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+  ChevronRight,
+} from "lucide-react"
 
 const INITIAL_FORM_STATE: ComplaintCreatePayload = {
   title: "",
@@ -35,296 +43,510 @@ const INITIAL_FORM_STATE: ComplaintCreatePayload = {
   pincode: "",
   latitude: 0,
   longitude: 0,
-};
+}
 
-export default function CitizenPostPage() {
-  const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [form, setForm] = useState<ComplaintCreatePayload>(INITIAL_FORM_STATE);
+const UPDATABLE_LOCATION_FIELDS = ["city", "pincode", "address_line_2"] as const
+
+function SectionHeader({
+  step,
+  title,
+  subtitle,
+}: {
+  step: number
+  title: string
+  subtitle?: string
+}) {
+  return (
+    <div className="flex items-start gap-3 mb-4">
+      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center mt-0.5 shadow-sm">
+        {step}
+      </div>
+      <div>
+        <p className="text-sm font-semibold text-foreground leading-tight">{title}</p>
+        {subtitle && (
+          <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function FilePreview({
+  file,
+  onRemove,
+}: {
+  file: File
+  onRemove: () => void
+}) {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchDepartments();
-  }, []);
+    if (file.type.startsWith("image")) {
+      const url = URL.createObjectURL(file)
+      setPreviewUrl(url)
+      return () => URL.revokeObjectURL(url)
+    }
+  }, [file])
+
+  const isImage = file.type.startsWith("image")
+  const isVideo = file.type.startsWith("video")
+  const isAudio = file.type.startsWith("audio")
+
+  const FileIcon = isVideo
+    ? FileVideo
+    : isAudio
+    ? FileAudio
+    : isImage
+    ? ImageIcon
+    : FileText
+
+  const fileSizeLabel =
+    file.size < 1024 * 1024
+      ? `${(file.size / 1024).toFixed(1)} KB`
+      : `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+
+  return (
+    <div className="relative rounded-xl border border-border bg-muted/40 overflow-hidden">
+      {isImage && previewUrl ? (
+        <div className="relative">
+          <img
+            src={previewUrl}
+            alt="Evidence preview"
+            className="w-full max-h-64 object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+          <div className="absolute bottom-3 left-3 right-10">
+            <p className="text-white text-xs font-medium truncate">{file.name}</p>
+            <p className="text-white/70 text-[10px]">{fileSizeLabel}</p>
+          </div>
+          <Badge
+            variant="secondary"
+            className="absolute top-2 left-2 text-[10px] gap-1 py-0.5"
+          >
+            <ImageIcon className="w-2.5 h-2.5" />
+            Image
+          </Badge>
+        </div>
+      ) : (
+        <div className="flex items-center gap-3 p-3">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <FileIcon className="w-5 h-5 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
+            <p className="text-xs text-muted-foreground">{fileSizeLabel}</p>
+          </div>
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={onRemove}
+        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition-colors"
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  )
+}
+
+export default function CitizenPostPage() {
+  const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [departments, setDepartments] = useState<Department[]>([])
+  const [loading, setLoading] = useState(false)
+  const [file, setFile] = useState<File | null>(null)
+  const [form, setForm] = useState<ComplaintCreatePayload>(INITIAL_FORM_STATE)
+  const [isDragging, setIsDragging] = useState(false)
+
+  useEffect(() => {
+    fetchDepartments()
+  }, [])
+
+  // ==================== DATA FETCHING ====================
 
   const fetchDepartments = async () => {
     try {
-      const res = await REQUEST("GET", "admins/departments/");
-      setDepartments(res || []);
+      const res = await REQUEST("GET", "admins/departments/")
+      setDepartments(res || [])
     } catch (err) {
-      console.error(err);
+      console.error("Failed to fetch departments:", err)
     }
-  };
+  }
+
+  // ==================== FORM HANDLERS ====================
 
   const updateForm = (updates: Partial<ComplaintCreatePayload>) => {
-    setForm(prev => ({ ...prev, ...updates }));
-  };
+    setForm((prev) => ({ ...prev, ...updates }))
+  }
+
+  const handleChange = (
+    key: keyof ComplaintCreatePayload,
+    value: string | number
+  ) => {
+    updateForm({ [key]: value })
+  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0] || null;
-    setFile(selectedFile);
+    setFile(e.target.files?.[0] || null)
+  }
 
-    if (selectedFile) {
-      const url = URL.createObjectURL(selectedFile);
-      setPreviewUrl(url);
-    } else {
-      setPreviewUrl(null);
-    }
-  };
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const dropped = e.dataTransfer.files?.[0]
+    if (dropped) setFile(dropped)
+  }
+
+  // ==================== GEOLOCATION ====================
+
+  const getCurrentCoordinates = (): Promise<{ lat: number; lng: number }> => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        return reject(new Error("Geolocation not supported"))
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) =>
+          resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        (err) => reject(err)
+      )
+    })
+  }
 
   const handleRefineLocation = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const pos: any = await new Promise((res, rej) => 
-        navigator.geolocation.getCurrentPosition(res, rej)
-      );
-      const { latitude: lat, longitude: lng } = pos.coords;
-      
+      const { lat, lng } = await getCurrentCoordinates()
       const location = await REQUEST("POST", "citizens/ai/resolve_location/", {
         latitude: lat,
         longitude: lng,
-      });
-
-      updateForm({
-        latitude: lat,
-        longitude: lng,
-        city: location.city || form.city,
-        pincode: location.pincode || form.pincode,
-        address_line_1: location.address_line_1 || form.address_line_1,
-      });
-      toast.success("Location synced from GPS");
+      })
+      const updates: Partial<ComplaintCreatePayload> = { latitude: lat, longitude: lng }
+      UPDATABLE_LOCATION_FIELDS.forEach((key) => {
+        if (location[key]) updates[key] = location[key]
+      })
+      updateForm(updates)
+      toast.success("Location refined successfully!")
     } catch (err) {
-      toast.error("Geolocation access denied");
+      console.error("Location refinement failed:", err)
+      toast.error("Failed to refine location. Please try again.")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
-  const handleAIAnalyze = async () => {
-    if (!file) return;
-    setLoading(true);
+  // ==================== AI DESCRIPTION ====================
+
+  const handleRefineDescription = async () => {
+    if (!file) {
+      toast.warning("Please upload an image first")
+      return
+    }
+    setLoading(true)
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const ai = await REQUEST("POST", "citizens/ai/caption_image/", fd, { isMultipart: true });
-      
-      updateForm({
-        description: ai.caption,
-        department: ai.suggested_department.id,
-      });
-      toast.success("AI Analysis complete");
+      const fd = new FormData()
+      fd.append("file", file)
+      const ai = await REQUEST("POST", "citizens/ai/caption_image/", fd, {
+        isMultipart: true,
+      })
+      updateForm({ description: ai.caption, department: ai.suggested_department.id })
+      toast.success("AI description generated!")
     } catch (err) {
-      toast.error("AI Analysis failed");
+      console.error("AI refinement failed:", err)
+      toast.error("Failed to generate AI description. Please try again.")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
+
+  // ==================== SUBMISSION ====================
+
+  const getMediaType = (file: File): string => {
+    if (file.type.startsWith("image")) return "image"
+    if (file.type.startsWith("video")) return "video"
+    if (file.type.startsWith("audio")) return "audio"
+    return "document"
+  }
+
+  const ensureCoordinates = async (): Promise<{
+    latitude: number
+    longitude: number
+  }> => {
+    if (form.latitude && form.longitude) {
+      return { latitude: form.latitude, longitude: form.longitude }
+    }
+    const coords = await getCurrentCoordinates()
+    return { latitude: coords.lat, longitude: coords.lng }
+  }
+
+  const uploadEvidence = async (complaintId: number, file: File) => {
+    const fd = new FormData()
+    fd.append("file", file)
+    fd.append("media_type", getMediaType(file))
+    await REQUEST("POST", `citizens/upload_evidence/${complaintId}/`, fd, {
+      isMultipart: true,
+    })
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!file) return toast.warning("Please upload evidence");
-    
-    setLoading(true);
-    try {
-      const complaint = await REQUEST("POST", "citizens/complaints/", form);
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("media_type", file.type.split('/')[0]);
-      
-      await REQUEST("POST", `citizens/upload_evidence/${complaint.id}/`, fd, { isMultipart: true });
-      
-      toast.success("Report filed successfully");
-      router.push("/citizen/complaints");
-    } catch (err) {
-      toast.error("Submission failed");
-    } finally {
-      setLoading(false);
+    e.preventDefault()
+    if (!file) {
+      toast.warning("Evidence file is required")
+      return
     }
-  };
+    setLoading(true)
+    try {
+      const coordinates = await ensureCoordinates()
+      const complaint = await REQUEST("POST", "citizens/complaints/", {
+        ...form,
+        ...coordinates,
+      })
+      await uploadEvidence(complaint.id, file)
+      toast.success("Complaint submitted successfully!")
+      router.push("/citizen/complaints")
+      setForm(INITIAL_FORM_STATE)
+      setFile(null)
+    } catch (err) {
+      console.error("Submission failed:", err)
+      toast.error("Failed to submit complaint. Please try again.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const isImageFile = file?.type.startsWith("image")
+  const hasCoordinates = form.latitude !== 0 && form.longitude !== 0
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-black py-10 px-4">
-      <div className="max-w-xl mx-auto space-y-6">
-        
-        <div className="flex items-center gap-3 px-2">
-          <div className="h-10 w-10 bg-primary rounded flex items-center justify-center shadow-lg shadow-primary/20">
-            <Camera className="h-6 w-6 text-primary-foreground" />
+    <div className="min-h-screen bg-background">
+      <div className="max-w-2xl mx-auto px-4 py-8">
+
+        {/* Page Header */}
+        <div className="mb-8">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
+            <span>Dashboard</span>
+            <ChevronRight className="w-3 h-3" />
+            <span className="text-foreground font-medium">New Complaint</span>
           </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight">File a Report</h1>
-            <p className="text-xs text-muted-foreground uppercase font-semibold tracking-widest">Incident Reporting System</p>
-          </div>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">
+            File a Complaint
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Report a civic issue in your area. We'll route it to the right department.
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <Card className="border-border/50 shadow-none bg-card">
-            <CardContent className="p-6 space-y-6">
-              
-              {/* 1. Title */}
-              <div className="space-y-2">
-                <Label htmlFor="title" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Report Title</Label>
-                <Input 
-                  id="title"
-                  placeholder="E.g., Large Pothole on Main St"
-                  value={form.title}
-                  onChange={e => updateForm({ title: e.target.value })}
-                  className="rounded h-11 border-border/60 focus-visible:ring-primary"
-                  required
-                />
-              </div>
 
-              {/* 2. Image / Preview */}
-              <div className="space-y-3">
-                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Visual Evidence</Label>
-                <input 
-                  type="file" 
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  accept="image/*,video/*"
-                  className="hidden" 
-                />
-                
-                {!previewUrl ? (
-                  <div 
-                    onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-border/60 roundedl p-10 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="h-12 w-12 roundedll bg-muted flex items-center justify-center">
-                      <UploadCloud className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                    <div className="text-center">
-                      <p className="text-sm font-semibold">Click to upload media</p>
-                      <p className="text-xs text-muted-foreground">Images or Videos up to 10MB</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="relative group roundedl overflow-hidden border border-border">
-                    <img src={previewUrl} className="w-full aspect-video object-cover" alt="Preview" />
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity gap-3">
-                      <Button type="button" variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>Change</Button>
-                      <Button type="button" variant="destructive" size="sm" onClick={() => { setFile(null); setPreviewUrl(null); }}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
+          {/* ── Section 1: Basic Info ── */}
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-4">
+            <SectionHeader
+              step={1}
+              title="Basic Information"
+              subtitle="Give your complaint a clear title and description"
+            />
 
-                {previewUrl && file?.type.startsWith("image") && (
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={handleAIAnalyze}
-                    disabled={loading}
-                    className="w-full h-11 rounded border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 transition-all border-dashed"
-                  >
-                    {loading ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
-                    Auto-Fill with AI Magic
-                  </Button>
-                )}
-              </div>
+            <FormField
+              label="Title"
+              value={form.title}
+              onChange={(v) => handleChange("title", v)}
+              required
+            />
 
-              {/* 3. Description */}
-              <div className="space-y-2">
-                <Label htmlFor="desc" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Issue Description</Label>
-                <Textarea 
-                  id="desc"
-                  rows={4}
-                  placeholder="Provide details about the issue..."
-                  value={form.description}
-                  onChange={e => updateForm({ description: e.target.value })}
-                  className="rounded border-border/60 focus-visible:ring-primary"
-                  required
-                />
-              </div>
-
-              {/* 4. Department */}
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Assign Department</Label>
-                <Select
-                  value={form.department ? form.department.toString() : ""}
-                  onValueChange={v => updateForm({ department: Number(v) })}
+            <div className="space-y-1.5">
+              <FormField
+                label="Description"
+                value={form.description}
+                onChange={(v) => handleChange("description", v)}
+                required
+              />
+              {isImageFile && (
+                <Button
+                  type="button"
+                  onClick={handleRefineDescription}
+                  disabled={loading}
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs h-7 px-2.5 mt-1 border-dashed border-primary/40 text-primary hover:bg-primary/5"
                 >
-                  <SelectTrigger className="h-11 rounded border-border/60">
-                    <SelectValue placeholder="Select Department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.map(dep => (
+                  {loading ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3 h-3" />
+                  )}
+                  Auto-fill with AI
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* ── Section 2: Location ── */}
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-4">
+            <SectionHeader
+              step={2}
+              title="Location Details"
+              subtitle="Where is the issue located?"
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                label="Address Line 1"
+                value={form.address_line_1}
+                onChange={(v) => handleChange("address_line_1", v)}
+              />
+              <FormField
+                label="Address Line 2"
+                value={form.address_line_2}
+                onChange={(v) => handleChange("address_line_2", v)}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                label="City"
+                value={form.city}
+                onChange={(v) => handleChange("city", v)}
+              />
+              <FormField
+                label="Pincode"
+                value={form.pincode}
+                onChange={(v) => handleChange("pincode", v)}
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Button
+                type="button"
+                onClick={handleRefineLocation}
+                disabled={loading}
+                variant="outline"
+                size="sm"
+                className="gap-2 text-xs h-8 px-3"
+              >
+                {loading ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <MapPin className="w-3.5 h-3.5" />
+                )}
+                Detect My Location
+              </Button>
+              {hasCoordinates && (
+                <Badge
+                  variant="secondary"
+                  className="gap-1 text-[10px] py-0.5 px-2 bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                  GPS acquired
+                </Badge>
+              )}
+            </div>
+          </div>
+
+          {/* ── Section 3: Department ── */}
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-4">
+            <SectionHeader
+              step={3}
+              title="Department"
+              subtitle="Select the department responsible for this issue"
+            />
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Assigned Department
+              </Label>
+              <Select
+                value={form.department.toString()}
+                onValueChange={(v) => handleChange("department", Number(v))}
+              >
+                <SelectTrigger className="h-10">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-muted-foreground" />
+                    <SelectValue placeholder="Select a department" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {departments.map((dep) => (
                       <SelectItem key={dep.id} value={dep.id.toString()}>
-                        <div className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4 opacity-50" />
-                          {dep.name}
-                        </div>
+                        {dep.name}
                       </SelectItem>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
-              {/* 5. Address */}
-              <div className="space-y-4 pt-4 border-t border-border/40">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Location Details</Label>
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={handleRefineLocation}
-                    className="h-7 text-primary font-bold text-[10px] hover:bg-primary/5 px-2"
-                  >
-                    <MapPin className="h-3 w-3 mr-1" /> AUTO-DETECT
-                  </Button>
+          {/* ── Section 4: Evidence Upload ── */}
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-4">
+            <SectionHeader
+              step={4}
+              title="Evidence"
+              subtitle="Attach a photo, video, audio, or PDF to support your complaint"
+            />
+
+            {!file ? (
+              <div
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`
+                  relative flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed
+                  cursor-pointer transition-all duration-200 py-10 px-6 text-center
+                  ${isDragging
+                    ? "border-primary bg-primary/5 scale-[1.01]"
+                    : "border-border hover:border-primary/50 hover:bg-muted/30"
+                  }
+                `}
+              >
+                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                  <Upload className="w-5 h-5 text-muted-foreground" />
                 </div>
-                
-                <div className="grid gap-4">
-                  <Input 
-                    placeholder="Street Address / Area" 
-                    value={form.address_line_1}
-                    onChange={e => updateForm({ address_line_1: e.target.value })}
-                    className="h-11 rounded border-border/60"
-                  />
-                  <div className="grid grid-cols-2 gap-4">
-                    <Input 
-                      placeholder="City" 
-                      value={form.city}
-                      onChange={e => updateForm({ city: e.target.value })}
-                      className="h-11 rounded border-border/60"
-                    />
-                    <Input 
-                      placeholder="Pincode" 
-                      value={form.pincode}
-                      onChange={e => updateForm({ pincode: e.target.value })}
-                      className="h-11 rounded border-border/60"
-                    />
-                  </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    Drop your file here, or{" "}
+                    <span className="text-primary underline underline-offset-2">browse</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Supports images, videos, audio, and PDFs
+                  </p>
                 </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,video/*,audio/*,.pdf"
+                  onChange={handleFileChange}
+                  className="sr-only"
+                />
               </div>
+            ) : (
+              <FilePreview file={file} onRemove={() => setFile(null)} />
+            )}
+          </div>
 
-            </CardContent>
-          </Card>
+          <Separator />
 
-          <Button 
-            type="submit" 
-            disabled={loading} 
-            className="w-full h-14 roundedl text-md font-bold shadow-xl shadow-primary/20 transition-all hover:scale-[1.01] active:scale-[0.99]"
+          {/* ── Submit ── */}
+          <Button
+            type="submit"
+            disabled={loading}
+            className="w-full h-11 text-sm font-semibold gap-2 shadow-sm"
           >
             {loading ? (
-              <Loader2 className="animate-spin h-5 w-5" />
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Submitting…
+              </>
             ) : (
-              <span className="flex items-center gap-2">
-                Submit Report <Send className="h-4 w-4" />
-              </span>
+              <>
+                <SendHorizonal className="w-4 h-4" />
+                Submit Complaint
+              </>
             )}
           </Button>
-          
-          <p className="text-center text-[10px] text-muted-foreground uppercase font-bold tracking-widest flex items-center justify-center gap-1">
-            <Info className="h-3 w-3" /> All submissions are subject to legal verification
-          </p>
+
         </form>
       </div>
     </div>
-  );
+  )
 }

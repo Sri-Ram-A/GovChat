@@ -41,6 +41,8 @@ const navItems: NavItem[] = [
     items: [
       { label: "File Complaint", href: "/citizen/post" },
       { label: "Community Feed", href: "/citizen/complaints" },
+      { label: "Scheme Recommendations", href: "/citizen/recommendations" },
+
     ],
   },
   { label: "Gov Services AI", href: "/citizen/chat" },
