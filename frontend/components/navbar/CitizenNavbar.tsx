@@ -66,7 +66,7 @@ export default function CitizenNavbar() {
 
   const handleLogout = () => {
     clearStoredToken();
-    router.push("/citizen/login");
+    router.push("/");
   };
 
   const getUserInitials = () => {

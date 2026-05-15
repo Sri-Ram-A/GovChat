@@ -76,36 +76,42 @@ export default function AdminSetupCarousel() {
     if (!newJurisdiction.name || !newJurisdiction.code) {
       return toast.error("Name and Code are required")
     }
-
-    const res = await REQUEST("POST", "admins/jurisdictions/", newJurisdiction)
-    if (!res.ok) return toast.error("Jurisdiction exists")
-    setJurisdictions(prev => [...prev, res])
-    setNewJurisdiction({ name: "", code: "", location: "" })
-    toast.success("Jurisdiction created")
+    try {
+      const res: any = await REQUEST("POST", "admins/jurisdictions/", newJurisdiction)
+      setJurisdictions(prev => [...prev, res])
+      setNewJurisdiction({ name: "", code: "", location: "" })
+      toast.success("Jurisdiction created")
+    } catch (err: any) {
+      toast.error(err?.message ?? "Jurisdiction already exists")
+    }
   }
 
   const createDomain = async () => {
     if (!newDomain.name) {
       return toast.error("Name is required")
     }
-
-    const res = await REQUEST("POST", "admins/domains/", newDomain)
-    if (!res.ok) return toast.error("Domain exists")
-    setDomains(prev => [...prev, res])
-    setNewDomain({ name: "", description: "" })
-    toast.success("Domain created")
+    try {
+      const res: any = await REQUEST("POST", "admins/domains/", newDomain)
+      setDomains(prev => [...prev, res])
+      setNewDomain({ name: "", description: "" })
+      toast.success("Domain created")
+    } catch (err: any) {
+      toast.error(err?.message ?? "Domain already exists")
+    }
   }
 
   const createDepartment = async () => {
     if (!newDepartment.name || !newDepartment.code || !newDepartment.jurisdiction) {
       return toast.error("Name, Code, and Jurisdiction are required")
     }
-
-    const res = await REQUEST("POST", "admins/departments/", newDepartment)
-    if (!res.ok) return toast.error("Failed to create department")
-    setDepartments(prev => [...prev, res])
-    setNewDepartment({ name: "", code: "", contact_point: "", jurisdiction: "", domains: [] })
-    toast.success("Department created")
+    try {
+      const res: any = await REQUEST("POST", "admins/departments/", newDepartment)
+      setDepartments(prev => [...prev, res])
+      setNewDepartment({ name: "", code: "", contact_point: "", jurisdiction: "", domains: [] })
+      toast.success("Department created")
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to create department")
+    }
   }
 
   return (

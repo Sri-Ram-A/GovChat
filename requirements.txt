@@ -8,6 +8,8 @@ requests
 grpcio 
 grpcio-tools
 protobuf
+psycopg2-binary
+psycopg
 # huggingface_hub[hf_xet]
 
 # backend dependencies 

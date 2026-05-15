@@ -2,33 +2,69 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-
-import { cn } from "@/lib/utils";
-import { Card, CardContent, CardFooter, CardHeader, } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useSearchParams, useRouter } from "next/navigation";
+import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
+import {
+  ThumbsUp,
+  Eye,
+  FileText,
+  ImageIcon,
+  Video,
+  Music,
+  MapPin,
+  Clock,
+  Building2,
+  AlertCircle,
+  CheckCircle2,
+  Loader2,
+  ChevronRight,
+  Shield,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge"
+import { CardFooter, CardHeader } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
+import { cn } from "@/lib/utils"
+import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { useSearchParams, useRouter } from "next/navigation";
-import { Suspense } from "react";
-import { toast } from "sonner";
-import { FilePlusCorner, MessageCircle, MapPin, Search, CalendarDays } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
-import { ThumbsUp, Eye, FileText, ImageIcon, Video, Music, ArrowRight, History } from "lucide-react";
-
 import { REQUEST, API_URL } from "@/services/api";
 import { Complaint, Evidence } from "@/types";
-import { Timeline as AceternityTimeline } from "@/components/ui/timeline";
-import { format } from "date-fns";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 
-/* -------------------------------- Evidence Renderer -------------------------------- */
+/* ─── Status Design Schema ─────────────────────────────────────────────────── */
+const STATUS_CONFIG: Record<
+  string,
+  { label: string; icon: React.ComponentType<{ className?: string }>; className: string }
+> = {
+  OPEN: {
+    label: "Open",
+    icon: AlertCircle,
+    className: "text-red-600 dark:text-red-400 border-red-200 bg-red-50/50 dark:bg-red-950/20 dark:border-red-900/50",
+  },
+  IN_PROGRESS: {
+    label: "In Progress",
+    icon: Loader2,
+    className: "text-amber-600 dark:text-amber-400 border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-900/50",
+  },
+  RESOLVED: {
+    label: "Resolved",
+    icon: CheckCircle2,
+    className: "text-emerald-600 dark:text-emerald-400 border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20 dark:border-emerald-900/50",
+  },
+  CLOSED: {
+    label: "Closed",
+    icon: CheckCircle2,
+    className: "text-neutral-500 dark:text-neutral-400 border-neutral-200 bg-neutral-50/50 dark:bg-neutral-900/40 dark:border-neutral-800",
+  },
+  DRAFT: {
+    label: "Draft",
+    icon: FileText,
+    className: "text-neutral-400 dark:text-neutral-500 border-dashed border-neutral-200 bg-transparent dark:border-neutral-800",
+  },
+};
 
+/* ─── Evidence Attachment Layouts ─────────────────────────────────────────── */
 function EvidenceRenderer({ evidence }: { evidence: Evidence }) {
   const src = evidence.file?.startsWith("http")
     ? evidence.file
@@ -37,409 +73,380 @@ function EvidenceRenderer({ evidence }: { evidence: Evidence }) {
   switch (evidence.media_type) {
     case "image":
       return (
-        <div className="w-full h-full rounded-lg overflow-hidden border">
-          <img
-            src={src}
-            alt="Evidence"
-            className="w-full h-full object-cover"
-          />
+        <div className="relative rounded-lg overflow-hidden border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900">
+          <img src={src} alt={evidence.caption || "Evidence file"} className="w-full object-cover max-h-60" />
+          {evidence.caption && (
+            <div className="bg-neutral-50 dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800 px-3 py-1.5">
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 italic">{evidence.caption}</p>
+            </div>
+          )}
         </div>
       );
-
     case "video":
-      return (
-        <video
-          src={src}
-          controls
-          className="w-full rounded-lg border"
-        />
-      );
-
+      return <video src={src} controls className="w-full rounded-lg border border-neutral-100 dark:border-neutral-800 max-h-60" />;
     case "audio":
       return (
-        <audio
-          src={src}
-          controls
-          className="w-full"
-        />
+        <div className="flex items-center gap-2 p-2.5 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900">
+          <Music className="h-3.5 w-3.5 text-neutral-400 shrink-0" />
+          <audio src={src} controls className="w-full h-7 text-xs" />
+        </div>
       );
-
     default:
       return (
         <Link
           href={src}
           target="_blank"
-          className="flex items-center gap-2 text-sm text-primary hover:underline"
+          className="flex items-center gap-2 p-2.5 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 text-xs text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
         >
-          <FileText className="h-4 w-4" />
-          View document
+          <FileText className="h-3.5 w-3.5 text-neutral-400 shrink-0" />
+          <span className="font-medium truncate">View attached supporting documentation</span>
+          <ChevronRight className="h-3 w-3 ml-auto text-neutral-400" />
         </Link>
       );
   }
 }
 
-/* -------------------------------- Timeline Dialog -------------------------------- */
+function MediaTypeIcon({ type }: { type: string }) {
+  const icons: Record<string, React.ComponentType<{ className?: string }>> = {
+    image: ImageIcon,
+    video: Video,
+    audio: Music,
+    document: FileText,
+  };
+  const IconComponent = icons[type] ?? FileText;
+  return <IconComponent className="h-3 w-3" />;
+}
 
-function TimelineModal({ complaintId, open, onOpenChange }: { complaintId: number | null, open: boolean, onOpenChange: (open: boolean) => void }) {
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+/* ─── Premium Modernized Complaint Card ───────────────────────────────────── */
+function ComplaintCard({
+  complaint,
+  onView,
+  onUpvote,
+  upvoting,
+}: {
+  complaint: Complaint
+  onView: (c: Complaint) => void
+  onUpvote: (id: number) => void
+  upvoting: number | null
+}) {
+  const statusCfg = STATUS_CONFIG[complaint.status] ?? STATUS_CONFIG.OPEN
+  const StatusIcon = statusCfg.icon
 
-  useEffect(() => {
-    if (open && complaintId) {
-      setLoading(true);
-      REQUEST("GET", `admins/complaint/${complaintId}/`)
-        .then((res: any) => setData(res))
-        .catch((err) => toast.error("Failed to load timeline"))
-        .finally(() => setLoading(false));
-    } else {
-      setData(null);
-    }
-  }, [open, complaintId]);
+  const initials = (complaint.citizen ?? "U")
+    .split(" ")
+    .filter(Boolean)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2)
 
-  const timelineData = data?.group?.timeline?.map((item: any) => ({
-    title: format(new Date(item.created_at), "dd MMM yyyy"),
-    content: (
-      <div className="space-y-4">
-        {item.title && <h4 className="text-sm font-semibold text-slate-800">{item.title}</h4>}
-        <p className="text-sm text-slate-600 leading-relaxed">{item.text}</p>
-        
-        {item.image && (
-          <div className="rounded-2xl overflow-hidden border border-slate-100 bg-slate-50 shadow-sm">
-             <img 
-               src={item.image.startsWith('http') ? item.image : `${API_URL}/${item.image.replace(/^\//, '')}`} 
-               alt="Progress update" 
-               className="w-full h-auto object-cover max-h-60"
-             />
+  const departmentName =
+    typeof complaint.department === "string"
+      ? complaint.department
+      : complaint.department?.name ?? "Unassigned"
+
+  const locationText =
+    complaint.city ||
+    complaint.address_line_1 ||
+    complaint.address_line_2 ||
+    complaint.landmark ||
+    ""
+
+  const hasLocation = Boolean(locationText)
+
+  return (
+    <Card
+      className={cn(
+        "group overflow-hidden rounded border bg-card text-card-foreground shadow-sm transition-all duration-200",
+        "hover:-translate-y-0.5 m-4 hover:shadow-md hover:border-border/80"
+      )}
+    >
+      <article>
+        <CardHeader className="space-y-4 px-5 pt-5 pb-3">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <Avatar className="h-9 w-9 shrink-0 ring-1 ring-border">
+                <AvatarFallback className="bg-muted text-xs font-semibold text-muted-foreground">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium leading-none text-foreground">
+                  {complaint.citizen ?? "Citizen"}
+                </p>
+                <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                  <Clock className="h-3.5 w-3.5" />
+                  <span>
+                    {formatDistanceToNow(new Date(complaint.timestamp), {
+                      addSuffix: true,
+                    })}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <Badge
+              variant="secondary"
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium",
+                statusCfg.className
+              )}
+            >
+              <StatusIcon className="h-3.5 w-3.5" />
+              {statusCfg.label}
+            </Badge>
           </div>
-        )}
 
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Posted by {item.admin}</p>
-      </div>
-    ),
-  })) || [];
+          <div className="space-y-2">
+            <h3 className="text-base font-semibold leading-snug tracking-tight text-foreground">
+              <button
+                type="button"
+                onClick={() => onView(complaint)}
+                className="text-left transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md"
+              >
+                {complaint.title}
+              </button>
+            </h3>
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl rounded-[32px] border-none shadow-2xl p-0 overflow-hidden bg-white">
-        <DialogHeader className="p-8 pb-4 bg-slate-50/50 border-b border-slate-100">
-          <DialogTitle className="text-2xl font-black text-slate-900 tracking-tight">Resolution Progress</DialogTitle>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Official updates from the department</p>
-        </DialogHeader>
-        <div className="max-h-[70vh] overflow-y-auto p-8 pt-0">
-          {loading ? (
-            <div className="py-20 flex flex-col items-center gap-4">
-               <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fetching latest updates...</p>
-            </div>
-          ) : timelineData.length > 0 ? (
-            <div className="relative w-full overflow-hidden">
-               <AceternityTimeline data={timelineData} />
-            </div>
-          ) : (
-            <div className="py-20 text-center space-y-4">
-               <History className="w-12 h-12 text-slate-200 mx-auto" />
-               <div className="space-y-1">
-                 <p className="text-sm font-bold text-slate-800">No official updates yet</p>
-                 <p className="text-xs text-slate-400">Our team is currently reviewing your report. You'll see updates here as we progress.</p>
-               </div>
-            </div>
+            <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
+              {complaint.description}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {complaint.department && (
+              <Badge
+                variant="outline"
+                className="max-w-full gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
+              >
+                <Building2 className="h-3.5 w-3.5" />
+                <span className="truncate">{departmentName}</span>
+              </Badge>
+            )}
+
+            {hasLocation && (
+              <Badge
+                variant="outline"
+                className="max-w-full gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
+              >
+                <MapPin className="h-3.5 w-3.5" />
+                <span className="truncate">
+                  {complaint.city || complaint.address_line_1}
+                  {complaint.pincode ? ` • ${complaint.pincode}` : ""}
+                </span>
+              </Badge>
+            )}
+          </div>
+        </CardHeader>
+
+        <CardContent className="px-5 pb-4">
+          {complaint.evidences?.length > 0 && (
+            <section className="space-y-4">
+              <Separator />
+              <div className="space-y-3 pt-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Evidence
+                  </p>
+                  <span className="text-xs text-muted-foreground">
+                    {complaint.evidences.length} item
+                    {complaint.evidences.length > 1 ? "s" : ""}
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  {complaint.evidences.map((ev) => (
+                    <section key={ev.id} className="space-y-2">
+                      <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                        <MediaTypeIcon type={ev.media_type} />
+                        <span>{ev.media_type} verification</span>
+                      </div>
+                      <EvidenceRenderer evidence={ev} />
+                    </section>
+                  ))}
+                </div>
+              </div>
+            </section>
           )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
+        </CardContent>
+
+        <CardFooter className="flex items-center justify-between gap-3 px-5 pb-5 pt-0">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onUpvote(complaint.id)}
+            disabled={upvoting === complaint.id}
+            className={cn(
+              "h-9 rounded-full px-4 text-sm font-medium",
+              "border-border/70 bg-background hover:bg-muted/50"
+            )}
+          >
+            {upvoting === complaint.id ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <ThumbsUp className="mr-2 h-4 w-4" />
+            )}
+            <span className="tabular-nums">{complaint.likes_count ?? 0}</span>
+            <span className="ml-1 text-muted-foreground">Upvotes</span>
+          </Button>
+
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => onView(complaint)}
+            className="h-9 rounded-full px-4 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <Eye className="mr-2 h-4 w-4" />
+            Details
+          </Button>
+        </CardFooter>
+      </article>
+    </Card>
+  )
 }
 
-/* -------------------------------- Page -------------------------------- */
-
-export default function AllComplaintsPage() {
+/* ─── Skeleton Preloaders ─────────────────────────────────────────────────── */
+function SkeletonCard() {
   return (
-    <Suspense fallback={<div className="p-20 text-center">Loading...</div>}>
-      <ComplaintsContent />
-    </Suspense>
+    <div className="border-b border-neutral-100 dark:border-neutral-900 pb-6 mb-6 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-6 w-6 rounded-full" />
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-3 w-16" />
+        </div>
+        <Skeleton className="h-5 w-16 rounded-md" />
+      </div>
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-3 w-full" />
+      </div>
+      <Skeleton className="h-3 w-1/2" />
+      <div className="flex justify-between items-center pt-1">
+        <Skeleton className="h-8 w-24 rounded-md" />
+        <Skeleton className="h-8 w-16 rounded-md" />
+      </div>
+    </div>
   );
 }
 
-function ComplaintsContent() {
+/* ─── Main Complaints Feed Page Container ─────────────────────────────────── */
+export default function AllComplaintsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedComplaintId, setSelectedComplaintId] = useState<number | null>(null);
-  const [timelineOpen, setTimelineOpen] = useState(false);
+  const [upvoting, setUpvoting] = useState<number | null>(null);
 
-  const filter = searchParams.get('filter');
-  const isMyComplaints = filter === 'my';
-  const endpoint = isMyComplaints 
-    ? "citizens/complaints/my/" 
-    : "citizens/complaints/all/";
+  const filter = searchParams.get("filter");
+  const isMyComplaints = filter === "my";
+  const endpoint = isMyComplaints ? "citizens/complaints/my/" : "citizens/complaints/all/";
+  const pageTitle = isMyComplaints ? "My Filings" : "Public Feed";
 
   useEffect(() => {
     setLoading(true);
     REQUEST("GET", endpoint)
       .then((res: any) => setComplaints(res || []))
-      .catch((err) => {
-        console.error(err);
-        toast.error(err?.message || "Failed to load complaints");
-      })
+      .catch((err) => toast.error(err?.message || "Failed to load instances"))
       .finally(() => setLoading(false));
   }, [endpoint]);
 
-  const getStatusStep = (status: string) => {
-    switch (status) {
-      case "OPEN": return 1;
-      case "IN_PROGRESS": return 2;
-      case "RESOLVED":
-      case "CLOSED": return 3;
-      default: return 1;
-    }
-  };
-
   const handleUpvote = async (id: number) => {
+    if (upvoting !== null) return;
+    setUpvoting(id);
     try {
-      const res: any = await REQUEST("POST", `citizens/complaints/upvote/${id}/`);
-      setComplaints((prev) => 
+      const res = await REQUEST<{ liked: boolean; likes_count: number }>(
+        "POST",
+        `citizens/complaints/${id}/upvote/`
+      );
+      setComplaints((prev) =>
         prev.map((c) => c.id === id ? { ...c, likes_count: res.likes_count } : c)
       );
-      toast.success("Thanks for your support!");
-    } catch (err) {
-      toast.error("Failed to record upvote");
+      toast.success(res.liked ? "Upvoted" : "Upvote removed");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to upvote");
+    } finally {
+      setUpvoting(null);
     }
   };
+  const handleView = (complaint: Complaint) => {
+    router.push(`/citizen/complaints/${complaint.id}`);
+  };
+
+  const openCount = complaints.filter((c) => c.status === "OPEN").length;
+  const resolvedCount = complaints.filter((c) => c.status === "RESOLVED").length;
 
   return (
-    <div key={filter || "all"} className="min-h-screen bg-slate-50/50 pb-20">
-      {/* Background Decor */}
-      <div className="absolute inset-0 pointer-events-none -z-10">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-100/30 blur-3xl rounded-full" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-100/30 blur-3xl rounded-full" />
-      </div>
+    <div className="min-h-screen w-screen bg-background text-neutral-900 dark:text-neutral-50 flex flex-col items-center">
+      <div className="w-full max-w-200 px-4 py-8 sm:py-12 ">
 
-      <div className={cn("mx-auto px-4 pt-12 transition-all duration-700", isMyComplaints ? "max-w-7xl" : "max-w-3xl")}>
-        {/* Header Section */}
-        <div className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div className="text-center md:text-left">
-            <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-2">
-              {isMyComplaints ? "My Complaints" : "Community Feed"}
-            </h1>
-            <p className="text-slate-500 text-lg max-w-xl">
-              {isMyComplaints 
-                ? "Manage and track the progress of civic issues you've personally reported."
-                : "Explore and support civic improvements reported by citizens across the city."}
-            </p>
+        {/* GovChat System Title Header */}
+        <div className="border-b border-neutral-100 dark:border-neutral-900 pb-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="flex h-6 w-6 items-center justify-center rounded-md border border-neutral-200 dark:border-neutral-800 shadow-xs text-neutral-950 dark:text-neutral-50">
+              <Shield className="h-3.5 w-3.5" />
+            </div>
+            <span className="text-xs font-semibold tracking-wider uppercase text-neutral-400 dark:text-neutral-500">GovChat Core</span>
           </div>
 
+          <div className="flex items-baseline justify-between gap-4">
+            <h1 className="text-xl font-bold tracking-tight text-neutral-900 dark:text-neutral-50">{pageTitle}</h1>
+            {!loading && complaints.length > 0 && (
+              <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500 tabular-nums">
+                {complaints.length} systemic log{complaints.length !== 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
+
+          {/* Status Matrix Counters */}
+          {!loading && complaints.length > 0 && (
+            <div className="flex items-center gap-3 pt-1 text-[11px] font-medium tracking-tight">
+              {openCount > 0 && (
+                <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400">
+                  <AlertCircle className="h-3 w-3 shrink-0" />
+                  {openCount} unresolved cases
+                </span>
+              )}
+              {resolvedCount > 0 && (
+                <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 className="h-3 w-3 shrink-0" />
+                  {resolvedCount} closed solutions
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
-        <div className={cn(
-          "gap-8",
-          isMyComplaints ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : "space-y-8"
-        )}>
+        {/* Main Feed Content Execution Tunnel */}
+        <div className="pt-2">
           {loading ? (
-            Array.from({ length: 2 }).map((_, i) => (
-              <Card key={i} className="rounded-3xl border-slate-200/60 shadow-xl shadow-slate-200/20 overflow-hidden bg-white">
-                <div className="p-6 space-y-4">
-                  <div className="flex items-center gap-3">
-                    <Skeleton className="h-12 w-12 rounded-full" />
-                    <div className="space-y-2">
-                      <Skeleton className="h-4 w-32" />
-                      <Skeleton className="h-3 w-48" />
-                    </div>
-                  </div>
-                  <Skeleton className="h-8 w-3/4" />
-                  <Skeleton className="h-20 w-full" />
-                  <Skeleton className="h-64 w-full rounded-2xl" />
-                </div>
-              </Card>
-            ))
+            Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)
           ) : complaints.length === 0 ? (
-            <Card className="rounded-3xl border-dashed border-2 border-slate-200 bg-white/50 p-20 text-center">
-              <div className="flex flex-col items-center gap-4 text-slate-400">
-                <FileText className="w-12 h-12 opacity-20" />
-                <p className="font-medium">
-                  {isMyComplaints 
-                    ? "You haven't filed any complaints yet." 
-                    : "No complaints found in your area."}
+            <div className="flex flex-col items-center justify-center py-16 text-center gap-2 border border-dashed border-neutral-200 dark:border-neutral-800 rounded-lg bg-neutral-50/30 dark:bg-neutral-900/10">
+              <FileText className="h-5 w-5 text-neutral-300 dark:text-neutral-700" />
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">Database index empty</p>
+                <p className="text-xs text-neutral-400 dark:text-neutral-500 px-6 max-w-xs leading-normal">
+                  {isMyComplaints ? "You haven't initialized any security or infrastructure tickets yet." : "No public records match the database request pipeline."}
                 </p>
-                <Button variant="outline" className="rounded-xl" onClick={() => router.push('/citizen/post')}>
-                  {isMyComplaints ? "File your first complaint" : "Be the first to report"}
-                </Button>
               </div>
-            </Card>
+            </div>
           ) : (
             complaints.map((c) => (
-              <Card 
-                key={c.id} 
-                className={cn(
-                  "overflow-hidden bg-white group transition-all duration-500 cursor-pointer border-none relative",
-                  isMyComplaints 
-                    ? "rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(59,130,246,0.1)] hover:-translate-y-1.5 flex flex-col h-full" 
-                    : "rounded-[32px] border-slate-200/60 shadow-2xl shadow-slate-200/40 hover:shadow-blue-500/5"
-                )}
-                onClick={() => {
-                  if (isMyComplaints) {
-                    setSelectedComplaintId(c.id);
-                    setTimelineOpen(true);
-                  }
-                }}
-              >
-                {/* Sidebar Accent for My Complaints */}
-                {isMyComplaints && (
-                  <div className={cn(
-                    "absolute left-0 top-0 bottom-0 w-1.5 z-20 transition-all duration-500",
-                    c.status === "RESOLVED" ? "bg-emerald-500 group-hover:w-2" : "bg-blue-500 group-hover:w-2"
-                  )} />
-                )}
-
-                <CardHeader className={cn("p-5 pb-0 flex flex-row items-start justify-between relative z-10", isMyComplaints ? "pl-8" : "p-6")}>
-                  {isMyComplaints && (
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2">
-                        <span className={cn(
-                          "text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md",
-                          c.status === "RESOLVED" ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600"
-                        )}>
-                          {c.status}
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
-                         {formatDistanceToNow(new Date(c.timestamp), { addSuffix: true })}
-                      </span>
-                    </div>
-                  )}
-
-                  {!isMyComplaints && (
-                    <div className="flex items-center gap-4">
-                      <Avatar className="h-12 w-12 ring-4 ring-slate-50">
-                        <AvatarFallback className="bg-gradient-to-br from-slate-100 to-slate-200 text-slate-600 font-bold">
-                          {c.citizen?.[0]?.toUpperCase() ?? "U"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="space-y-0.5">
-                        <h4 className="font-bold text-slate-800 leading-tight">
-                          {c.citizen ?? "Anonymous Citizen"}
-                        </h4>
-                        <p className="text-xs font-medium text-slate-400 flex items-center gap-1.5">
-                          {formatDistanceToNow(new Date(c.timestamp), { addSuffix: true })}
-                          <span className="w-1 h-1 rounded-full bg-slate-200" />
-                          {c.city || c.address_line_2 || "Bengaluru"}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-
-
-                  {!isMyComplaints && (
-                    <Badge className="bg-orange-50 text-orange-600 border-none px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider">
-                      {typeof c.department === 'string' ? c.department : "General"}
-                    </Badge>
-                  )}
-                </CardHeader>
-
-                <CardContent className={cn("p-5 pt-4 flex-1 flex flex-col gap-4 relative z-10", isMyComplaints ? "pl-8" : "p-6 space-y-6")}>
-                  <div className="space-y-1.5">
-                    <h2 className={cn(
-                      "font-bold text-slate-900 leading-tight transition-colors group-hover:text-blue-600",
-                      isMyComplaints ? "text-lg line-clamp-1" : "text-2xl font-black"
-                    )}>
-                      {c.title}
-                    </h2>
-                    <p className={cn(
-                      "text-slate-400 leading-relaxed",
-                      isMyComplaints ? "text-[11px] line-clamp-2" : "text-sm text-slate-500"
-                    )}>
-                      {c.description}
-                    </p>
-                  </div>
-
-                  {/* Evidence Display */}
-                  {c.evidences?.[0] && (
-                    <div className={cn(
-                      "relative rounded-xl overflow-hidden border border-slate-50 bg-slate-50/50",
-                      !isMyComplaints ? "rounded-[32px] aspect-[16/9]" : "h-32 w-full"
-                    )}>
-                      <EvidenceRenderer evidence={c.evidences[0]} />
-                    </div>
-                  )}
-
-                  {/* Progress Stepper (Community Feed Only) */}
-                  {!isMyComplaints && (
-                    <div className="bg-slate-50/80 rounded-[24px] p-6 border border-slate-100/50">
-                      <div className="flex items-center justify-between relative px-2">
-                        <div className="absolute top-[18px] left-[10%] right-[10%] h-0.5 bg-slate-200 -z-0" />
-                        <div 
-                          className="absolute top-[18px] left-[10%] h-0.5 bg-blue-500 transition-all duration-1000 -z-0" 
-                          style={{ width: `${Math.max(0, (getStatusStep(c.status) - 1) * 40)}%` }}
-                        />
-                        <div className="flex flex-col items-center gap-2 relative z-10">
-                          <div className={cn("w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-500", getStatusStep(c.status) >= 1 ? "bg-slate-900 text-white shadow-lg shadow-slate-900/20" : "bg-white text-slate-400 border-2 border-slate-100")}>1</div>
-                          <span className={cn("text-[10px] font-bold uppercase tracking-wider", getStatusStep(c.status) >= 1 ? "text-slate-900" : "text-slate-300")}>Reported</span>
-                        </div>
-                        <div className="flex flex-col items-center gap-2 relative z-10">
-                          <div className={cn("w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-500", getStatusStep(c.status) >= 2 ? "bg-slate-900 text-white shadow-lg shadow-slate-900/20" : "bg-white text-slate-400 border-2 border-slate-100")}>2</div>
-                          <span className={cn("text-[10px] font-bold uppercase tracking-wider", getStatusStep(c.status) >= 2 ? "text-slate-900" : "text-slate-300")}>Assigned</span>
-                        </div>
-                        <div className="flex flex-col items-center gap-2 relative z-10">
-                          <div className={cn("w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-500", getStatusStep(c.status) >= 3 ? "bg-slate-900 text-white shadow-lg shadow-slate-900/20" : "bg-white text-slate-400 border-2 border-slate-100")}>3</div>
-                          <span className={cn("text-[10px] font-bold uppercase tracking-wider", getStatusStep(c.status) >= 3 ? "text-slate-900" : "text-slate-300")}>Resolved</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-
-                {isMyComplaints && (
-                  <CardFooter className="p-5 pt-0 relative z-10 pl-8">
-                    <Button 
-                      variant="ghost" 
-                      className="w-full rounded-xl text-[10px] font-black uppercase tracking-widest h-10 bg-slate-50 text-slate-400 hover:bg-blue-600 hover:text-white transition-all duration-300"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedComplaintId(c.id);
-                        setTimelineOpen(true);
-                      }}
-                    >
-                      Track Progress <ArrowRight className="w-3.5 h-3.5 ml-2" />
-                    </Button>
-                  </CardFooter>
-                )}
-
-                {!isMyComplaints && (
-                  <CardFooter className="px-6 py-4 border-t border-slate-50 flex items-center justify-between">
-                    <div className="flex items-center gap-6">
-                      <button 
-                        className="flex items-center gap-2 text-slate-400 hover:text-blue-500 transition-colors group/btn" 
-                        onClick={(e) => { 
-                          e.stopPropagation(); 
-                          handleUpvote(c.id);
-                        }}
-                      >
-                        <ThumbsUp className="w-4 h-4 group-hover/btn:-translate-y-0.5 transition-transform" />
-                        <span className="text-xs font-bold">{c.likes_count ?? 0} Upvotes</span>
-                      </button>
-                      <button className="flex items-center gap-2 text-slate-400 cursor-default">
-                        <MessageCircle className="w-4 h-4" />
-                        <span className="text-xs font-bold">Comments</span>
-                      </button>
-                    </div>
-                    <button className="p-2 rounded-xl hover:bg-slate-50 text-slate-400 transition-colors" onClick={(e) => { e.stopPropagation(); toast.info("Location details copied to clipboard!"); }}>
-                      <MapPin className="w-4 h-4" />
-                    </button>
-                  </CardFooter>
-                )}
-              </Card>
+              <ComplaintCard
+                key={c.id}
+                complaint={c}
+                onView={handleView}
+                onUpvote={handleUpvote}
+                upvoting={upvoting}
+              />
             ))
           )}
         </div>
-      </div>
 
-      <TimelineModal 
-        complaintId={selectedComplaintId} 
-        open={timelineOpen} 
-        onOpenChange={setTimelineOpen} 
-      />
+      </div>
     </div>
   );
 }
