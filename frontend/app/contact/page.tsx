@@ -8,7 +8,7 @@ import { Mail, Instagram, Github, MailIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import CitizenNavbar from "@/components/navbar/CitizenNavbar";
 
-type Stage = 0 | 1;
+type Stage = 1;
 
 const SocialRow = ({
   icon: Icon,
@@ -46,9 +46,6 @@ export default function ContactUsPage() {
   /* Keyboard navigation */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.key === "ArrowRight" || e.key === "ArrowDown") && stage === 0) {
-        transitionTo(1);
-      }
       if ((e.key === "ArrowLeft" || e.key === "ArrowUp") && stage === 1) {
         transitionTo(0);
       }
@@ -65,11 +62,6 @@ export default function ContactUsPage() {
       setVisible(true);
     }, 2000);
   };
-
-  const handleClick = () => {
-    if (stage === 0) transitionTo(1);
-  };
-
   const handleGoBack = () => {
     setVisible(false);
     setTimeout(() => {
@@ -98,7 +90,7 @@ export default function ContactUsPage() {
             <SocialRow
               icon={Github}
               label="siriaanya129"
-              href="https://github.com/siriaanya129"
+              href="https://github.com/sirikumar9106"
             />
             <SocialRow
               icon={Mail}
@@ -211,7 +203,7 @@ export default function ContactUsPage() {
           <p>Research and Reporting existing systems</p>
           <p>Query - Answer extraction using Muril</p>
           <p>Webscraping Information Databases</p>
-          
+
 
           <div className="mt-4">
             <SocialRow
@@ -237,73 +229,34 @@ export default function ContactUsPage() {
 
   return (
     <div
-      onClick={handleClick}
       className="relative min-h-screen w-full overflow-hidden bg-black text-white"
     >
       <CitizenNavbar />
-      {/* BEAMS BACKGROUND */}
       <div
         className={`
-          absolute inset-0 z-0
-          transition-opacity duration-2000 ease-in-out
-          ${visible ? "opacity-100" : "opacity-0"}
-        `}
-      >
-        <Beams
-          beamWidth={2.1}
-          beamHeight={16}
-          beamNumber={40}
-          lightColor="#00d5ff"
-          speed={8}
-          noiseIntensity={1.25}
-          scale={0.21}
-          rotation={21}
-        />
-      </div>
-
-      {/* STAGE 0 */}
-      {stage === 0 && (
-        <div
-          className={`
-            relative z-10 flex items-center justify-center h-screen
-            transition-opacity duration-2000 ease-in-out
-            ${visible ? "opacity-100" : "opacity-0"}
-          `}
-        >
-          <GlitchText speed={1.5} enableShadows enableOnHover={false}>
-            DEVELOPERS
-          </GlitchText>
-        </div>
-      )}
-
-      {/* STAGE 1 */}
-      {stage === 1 && (
-        <div
-          className={`
             relative z-10 h-screen w-full
             transition-opacity duration-2000 ease-in-out
             ${visible ? "opacity-100" : "opacity-0"}
           `}
-        >
-          {/* GO BACK BUTTON */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleGoBack();
-            }}
-            className="
+      >
+        {/* GO BACK BUTTON */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleGoBack();
+          }}
+          className="
               absolute bottom-8 left-1/2 -translate-x-1/2 z-20
               px-5 py-2 rounded-full
               bg-white/90 text-black text-sm font-medium
               hover:bg-white transition-colors
             "
-          >
-            Go Back
-          </button>
+        >
+          Go Back
+        </button>
 
-          <InfiniteMenu items={developers} scale={1} />
-        </div>
-      )}
+        <InfiniteMenu items={developers} scale={1} />
+      </div>
     </div>
   );
 }
