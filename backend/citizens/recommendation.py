@@ -39,6 +39,7 @@ def get_profile_keywords(citizen_profile) -> list[str]:
 
 def get_search_keywords(citizen_profile, limit: int = 20) -> list[str]:
     """Extract keywords from recent search history."""
+    # Fix: Import UserSearchHistory from entities.models
     from entities.models import UserSearchHistory
 
     recent = UserSearchHistory.objects.filter(
@@ -115,7 +116,6 @@ def recommend_schemes(citizen_profile, limit: int = 5) -> list[dict]:
                 "categories": row[5] or [],
                 "tags": row[6] or [],
                 "application_url": row[7],
-                
             })
 
         logger.info("Recommended {} schemes for citizen {}", 
@@ -152,7 +152,6 @@ def get_latest_schemes(limit: int = 5) -> list[dict]:
                 "categories": row[5] or [],
                 "tags": row[6] or [],
                 "application_url": row[7],
-                "scheme_url": f"http://localhost:8002/schemes/{row[0]}"
             }
             for row in rows
         ]

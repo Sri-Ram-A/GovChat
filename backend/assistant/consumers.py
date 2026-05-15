@@ -7,7 +7,8 @@ from .tts_client import TTSClient
 from .gcrag_client import GCRAGClient
 from django.conf import settings
 
-from entities.models import CitizenProfile, UserSearchHistory
+from entities.citizens import CitizenProfile
+from entities.citizens import UserSearchHistory
 
 STT_URL = settings.STT_URL
 TTS_URL = settings.TTS_URL

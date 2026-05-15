@@ -5,7 +5,7 @@ from loguru import logger
 import psycopg
 import os
 
-from entities.models import CitizenProfile
+from entities.citizens import CitizenProfile
 from citizens.recommendation import recommend_schemes
 
 
