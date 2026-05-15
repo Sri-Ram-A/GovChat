@@ -82,7 +82,7 @@ export default function CitizenNavbar() {
   };
 
   return (
-    <header className="fixed top-0 z-50 w-full border-b border-slate-100 bg-white/80 backdrop-blur-md shadow-sm">
+    <header className="fixed top-0 z-50 w-full border-b border bg-secondary backdrop-blur-md shadow-sm">
       <nav className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
         <div className="w-[200px]">
           <Link href="/citizen/home" className="flex items-center gap-2 group" title="Go to Home">
