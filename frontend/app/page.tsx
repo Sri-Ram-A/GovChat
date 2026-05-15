@@ -2,11 +2,12 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Moon, Sun } from "lucide-react"
+import { Moon, Sun, Shield, ChevronDown, User, Users, ShieldCheck, Wrench, Building2, ArrowRight } from "lucide-react"
 import { useTheme } from "next-themes"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import TiltedCard from "@/components/decor/TiltedCard"
+import { motion } from "framer-motion"
 
 export default function HomePage() {
   const { setTheme } = useTheme()
@@ -46,33 +47,42 @@ export default function HomePage() {
       {/* NAVBAR */}
       <nav className="relative z-20 w-full px-6 py-4 md:px-12 md:py-6">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
-          <div className="text-xl md:text-2xl font-black tracking-tighter text-white">
+          <div className="flex items-center gap-2 text-xl md:text-2xl font-black tracking-tighter text-white">
+            <div className="p-1.5 rounded-lg bg-blue-500 text-white">
+              <Shield className="h-6 w-6" />
+            </div>
             GOV<span className="text-blue-400">CHAT</span>
           </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/10"
-              >
-                <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setTheme("light")}>Light</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("dark")}>Dark</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("system")}>System</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+
+
+          <div className="flex items-center gap-4">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/10"
+                >
+                  <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                  <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setTheme("light")}>Light</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTheme("dark")}>Dark</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTheme("system")}>System</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+
+          </div>
         </div>
       </nav>
 
       {/* MAIN CONTENT */}
       <main className="relative z-10 flex min-h-[calc(100vh-80px)] flex-col items-center justify-center px-4 py-12">
-        <div className="mx-auto w-full max-w-6xl space-y-12 md:space-y-20 text-center">
+        <div className="mx-auto w-full max-w-7xl space-y-12 md:space-y-20 text-center">
 
           {/* HERO SECTION */}
           <div className="space-y-4 md:space-y-6">
@@ -85,13 +95,14 @@ export default function HomePage() {
           </div>
 
           {/* PORTAL CARDS GRID */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10 justify-items-center">
+          <div className="flex flex-wrap items-center justify-center gap-8 md:gap-10">
             
             {/* Citizen */}
             <PortalCard 
               title="Citizen Portal"
               desc="Report issues and track progress"
               img="/herocontainer/5.jpg"
+              icon={<Users className="h-6 w-6" />}
               onClick={() => navigateWithFade("/citizen/login")}
             />
 
@@ -100,18 +111,27 @@ export default function HomePage() {
               title="Admin Portal"
               desc="Manage issues and resolve tickets"
               img="/herocontainer/6.jpg"
-              onClick={() => navigateWithFade("/admin/home")}
+              icon={<ShieldCheck className="h-6 w-6" />}
+              onClick={() => navigateWithFade("/admin/login")}
             />
 
-            {/* Handler */}
-            <div className="sm:col-span-2 lg:col-span-1">
-              <PortalCard 
-                title="Handler Portal"
-                desc="Direct field operations and updates"
-                img="/herocontainer/7.jpg"
-                onClick={() => navigateWithFade("/handler/login")}
-              />
-            </div>
+            {/* Handler Portal */}
+            <PortalCard 
+              title="Handler Portal"
+              desc="Direct field operations and service handling"
+              img="/herocontainer/7.jpg"
+              icon={<Wrench className="h-6 w-6" />}
+              onClick={() => navigateWithFade("/handler/login")}
+            />
+
+            {/* Department Registration */}
+            <PortalCard 
+              title="Add Department"
+              desc="Register and onboard new administrative units"
+              img="/grievances/electricity_fix.png"
+              icon={<Building2 className="h-6 w-6" />}
+              onClick={() => navigateWithFade("/admin/jurisdiction")}
+            />
           </div>
 
           {/* FOOTER */}
@@ -127,33 +147,43 @@ export default function HomePage() {
 }
 
 /**
- * Reusable Card Wrapper to keep the main component clean 
- * and handle the TiltedCard responsive props.
+ * Reusable Card Wrapper with a professional, premium glassmorphic design.
  */
-function PortalCard({ title, desc, img, onClick }: { title: string, desc: string, img: string, onClick: () => void }) {
+function PortalCard({ title, desc, img, icon, onClick }: { title: string, desc: string, img: string, icon: React.ReactNode, onClick: () => void }) {
   return (
-    <div onClick={onClick} className="group cursor-pointer transition-transform duration-300 hover:scale-[1.02]">
-      <TiltedCard
-        imageSrc={img}
-        altText={title}
-        // These widths are slightly reduced to fit mobile screens better
-        containerWidth="100%"
-        containerHeight="300px"
-        imageWidth="300px"
-        imageHeight="300px"
-        rotateAmplitude={10}
-        scaleOnHover={1.05}
-        showMobileWarning={false}
-        displayOverlayContent
-        overlayContent={
-          <div className="w-65 rounded-xl bg-black/60 backdrop-blur-lg p-5 text-left border border-white/10 shadow-2xl">
-            <h3 className="text-lg font-bold text-white">{title}</h3>
-            <p className="mt-1 text-xs text-white/70 leading-relaxed">
-              {desc}
-            </p>
-          </div>
-        }
-      />
-    </div>
+    <motion.div 
+      whileHover={{ y: -10 }}
+      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      onClick={onClick} 
+      className="group relative w-full max-w-[320px] h-[400px] cursor-pointer overflow-hidden rounded-2xl border border-white/10 bg-black/20 backdrop-blur-sm shadow-2xl transition-all duration-300 hover:border-blue-500/50 hover:shadow-blue-500/10"
+    >
+      {/* Background Image with Overlay */}
+      <div className="absolute inset-0 z-0">
+        <img 
+          src={img} 
+          alt={title} 
+          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-60"
+        />
+        <div className="absolute inset-0 bg-linear-to-b from-transparent via-black/20 to-black/90" />
+      </div>
+
+      {/* Content */}
+      <div className="absolute inset-0 z-10 flex flex-col justify-end p-6 text-left">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/20 text-blue-400 backdrop-blur-md border border-blue-500/30 transition-transform duration-500 group-hover:scale-110 group-hover:bg-blue-500 group-hover:text-white">
+          {icon}
+        </div>
+        
+        <h3 className="text-2xl font-bold text-white tracking-tight group-hover:text-blue-400 transition-colors">
+          {title}
+        </h3>
+        <p className="mt-2 text-sm text-white/60 leading-relaxed line-clamp-2">
+          {desc}
+        </p>
+        
+        <div className="mt-6 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-blue-400 opacity-0 transform translate-y-2 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0">
+          Enter Portal <ArrowRight className="h-4 w-4" />
+        </div>
+      </div>
+    </motion.div>
   )
 }
