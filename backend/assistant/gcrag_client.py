@@ -20,11 +20,39 @@ class GCRAGClient:
                 resp.raise_for_status()
                 data = resp.json()
                 answer = data.get("answer", "")
-                logger.info("[GCRAG] Answer: {}", answer[:100])
-                return answer
+                formatted_response = self.format_response(answer)
+                logger.info("[GCRAG] Answer: {}", formatted_response[:100])
+                return formatted_response
         except Exception as e:
             logger.error("[GCRAG] Request failed: {}", e)
             return "Sorry, I could not retrieve an answer at this time."
+        
+    def format_response(self, text: str) -> str:
+        """Format the response text for better readability."""
+        lines = text.split('\n')
+        formatted_lines = []
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                formatted_lines.append('')
+                continue
+            
+            # Handle numbered lists (1., 2., 3.)
+            if line[0].isdigit() and '. ' in line[:3]:
+                # Add line break and bold for list items
+                formatted_lines.append(f'\n• **{line}**')
+            # Handle bullet points
+            elif line.startswith('- ') or line.startswith('* '):
+                formatted_lines.append(f'  {line}')
+            # Handle headings (all caps or ends with :)
+            elif line.isupper() or line.endswith(':'):
+                formatted_lines.append(f'\n**{line}**\n')
+            else:
+                formatted_lines.append(line)
+        
+        return '\n'.join(formatted_lines)
+
 
     def close(self):
         pass  # httpx client is context-managed, nothing to close

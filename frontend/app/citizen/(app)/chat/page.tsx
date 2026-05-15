@@ -123,6 +123,47 @@ export default function ChatPage() {
     onError: (err) => addMessage("system", `Mic error: ${err.message}`),
   })
 
+  const formatMessageText = (text: string) => {
+  if (!text) return text;
+  
+  // Split into lines first
+  let lines = text.split('\n');
+  let formattedLines = [];
+  
+  for (let line of lines) {
+    line = line.trim();
+    if (!line) {
+      formattedLines.push('');
+      continue;
+    }
+    
+    // Check if line starts with a number (numbered list)
+    if (/^\d+\./.test(line)) {
+      // Find the colon to bold the label
+      const colonIndex = line.indexOf(':');
+      if (colonIndex > 0) {
+        const label = line.substring(0, colonIndex + 1);
+        const content = line.substring(colonIndex + 1);
+        formattedLines.push(`**${label}**${content}`);
+      } else {
+        formattedLines.push(line);
+      }
+    }
+    // Check if line ends with colon (heading)
+    else if (line.endsWith(':')) {
+      formattedLines.push(`**${line}**`);
+    }
+    // Regular text - add line breaks after sentences
+    else {
+      // Add line break after sentences for better readability
+      let withBreaks = line.replace(/([.!?])\s+(?=[A-Z])/g, '$1\n\n');
+      formattedLines.push(withBreaks);
+    }
+  }
+  
+  return formattedLines.join('\n');
+};
+
   const handleStartRecording = async () => {
     if (!isConnected) return
     sendMessage({ action: "start_recording" })
@@ -214,7 +255,9 @@ export default function ChatPage() {
                         : "bg-muted text-foreground rounded-bl-md",
                     )}
                   >
-                    <p className={cn(!msg.isFinal && "opacity-70")}>{msg.text}</p>
+                    <p className={cn(!msg.isFinal && "opacity-70", "whitespace-pre-wrap")}>
+  {msg.type === 'bot' ? formatMessageText(msg.text) : msg.text}
+</p>
                     <span
                       className={cn(
                         "text-[10px] mt-1 block",
