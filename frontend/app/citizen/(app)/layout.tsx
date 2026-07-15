@@ -106,7 +106,7 @@ export default function CitizenLayout({
     }
 
     return (
-        <div className="min-h-screen p-15">
+        <div className="min-h-screen py-14">
             <CitizenNavbar />
             <main >
                 {children}

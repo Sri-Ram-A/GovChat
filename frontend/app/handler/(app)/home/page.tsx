@@ -437,7 +437,7 @@ function UploadView() {
     REQUEST("GET", "handlers/group-complaints/")
       .then((data) =>
         setComplaints(
-          (data || []).filter(
+          ((data as Complaint[]) || []).filter(
             (c: Complaint) => !["CLOSED", "RESOLVED"].includes(c.status)
           )
         )
@@ -509,7 +509,7 @@ function UploadView() {
   }
 
   return (
-    <div className="max-w-lg space-y-4">
+    <div className="max-w-lg mx-auto  space-y-4">
       <div className="rounded-lg border bg-background p-5 space-y-4">
         <div>
           <h2 className="text-sm font-medium">Upload field evidence</h2>

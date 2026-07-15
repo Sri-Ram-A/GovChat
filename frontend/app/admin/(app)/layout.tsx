@@ -106,9 +106,9 @@ export default function CitizenLayout({
     }
 
     return (
-        <div className="min-h-screen">
+        <div className="min-h-screen ">
             <AdminNavbar />
-            <main className="pt-24">
+            <main className="pt-4 max-w-7xl mx-auto">
                 {children}
             </main>
         </div>
